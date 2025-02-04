@@ -1,0 +1,64 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'L4AddonEnforcer'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=L4AddonEnforcer",
+                    "--package=L4AddonEnforcer"
+                ],
+                "filter": {
+                    "name": "L4AddonEnforcer",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Test a Release 'L4AddonEnforcer'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=L4AddonEnforcer",
+                    "--package=L4AddonEnforcer",
+                    "--release"
+                ],
+                "filter": {
+                    "name": "L4AddonEnforcer",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'L4AddonEnforcer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=L4AddonEnforcer",
+                    "--package=L4AddonEnforcer"
+                ],
+                "filter": {
+                    "name": "L4AddonEnforcer",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
