@@ -1,12 +1,14 @@
 use path_dedot::ParseDot;
 use md5::{Digest, Md5};
-use std::{borrow::Cow, env, env::var_os, fmt::{Debug, Display, Formatter}, fs::{File, read_to_string, write, create_dir_all, copy}, io::{BufReader, Read}, path::{Path, PathBuf}, process::exit, sync::Arc};
+use std::{borrow::Cow, env, env::var_os, fmt::{Debug, Display, Formatter}, fs::{File, read_to_string, write, create_dir_all, copy, remove_file}, io::{BufReader, Read}, path::{Path, PathBuf}, process::exit, sync::Arc};
 use steamlocate::{App, Library, SteamDir};
 use thiserror::Error;
 
 fn main() -> std::io::Result<()> {
     let mut addon_file = String::new();
+    let addon_path = PathBuf::new();
     let mut name = String::new();
+    //let mut del_name = String::new();
     let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
     
     let args: Vec<String> = env::args().collect();
@@ -22,6 +24,14 @@ fn main() -> std::io::Result<()> {
                         exit(22);
                     }
                 },
+                // "-d" | "--delete" => {
+                //     if let Some(value) = iter.next() {
+                //         del_name = value.clone();
+                //     } else {
+                //         eprintln!("Error: No addon name provided for {}", arg);
+                //         exit(22);
+                //     }
+                // },
                 "-n" | "--name" => {
                     if let Some(value) = iter.next() {
                         name = value.clone();
@@ -43,24 +53,27 @@ fn main() -> std::io::Result<()> {
         exit(22);
     }
 
-//  if !args.contains('-R') || !args.contains('--reset') {
-    // Validate addon name
-    if name.is_empty() || name.contains(char::is_whitespace) || name.contains('/') || name.contains('\\') || name.contains(':') || name.contains('*') || name.contains('?') || name.contains('"') || name.contains('<') || name.contains('>') || name.contains('|') {
-        eprintln!("Error: Invalid addon name!");
-        eprintln!("\tName cannot be empty, contain whitespace, or special characters");
-        eprintln!("\tthat are known to cause problems with file managers or filesystems.");
-        exit(36); // 'File name too long' xd
+    // Require both arguments on installation
+    if (name.is_empty() && !addon_file.is_empty()) || (!name.is_empty() && addon_file.is_empty()) {
+        eprintln!("Error: Both addon name and addon file path must be provided!");
+        exit(22);
+    } else {
+        // Validate addon name
+        if /*name.is_empty() || */name.contains(char::is_whitespace) || name.contains('/') || name.contains('\\') || name.contains(':') || name.contains('*') || name.contains('?') || name.contains('"') || name.contains('<') || name.contains('>') || name.contains('|') {
+            eprintln!("Error: Invalid addon name!");
+            eprintln!("\tName cannot be empty, contain whitespace, or special characters");
+            eprintln!("\tthat are known to cause problems with file managers or filesystems.");
+            exit(36); // 'File name too long' xd
+        }
+        
+        // Validate addon file
+        let addon_path = PathBuf::from(&addon_file);
+            if var_os("DEBUG").is_some() {println!("Addon path: {:?}", addon_path);}
+        if !addon_path.is_file() {
+            eprintln!("Error: Invalid addon file path!");
+            exit(2); // 'No such file or directory'
+        }
     }
-    
-    // Validate addon file
-    let addon_path = PathBuf::from(&addon_file);
-        if var_os("DEBUG").is_some() {println!("Addon path: {:?}", addon_path);}
-    if !addon_path.is_file() {
-        eprintln!("Error: Invalid addon file path!");
-        exit(2); // 'No such file or directory'
-    }
-
-//  }
     // Locate the Left 4 Dead 2 directory
         if var_os("DEBUG").is_some() {println!("Locating L4D2 directory...");}
     let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
@@ -105,7 +118,12 @@ fn main() -> std::io::Result<()> {
 
     // Copy the addon file to the new addon directory
         if var_os("DEBUG").is_some() {println!("Copying addon file to: {:?}", addon_dir);}
-    let destination = addon_dir.join(addon_path.with_file_name("pak01_dir"));
+    let mut destination = addon_dir.join(addon_path.file_name().unwrap());
+    destination.set_file_name("pak01_dir");
+    if destination.exists() {
+        remove_file(&destination)?;
+        if var_os("DEBUG").is_some() {println!("Deleted {:?}", destination);}
+    }
     copy(&addon_path, &destination)?;
 
     // Read the gameinfo.txt file
@@ -201,6 +219,25 @@ fn l4d2_path() -> Result<PathBuf, LoaderError> {
     }
 }
 
+// fn deletion () {
+//     // Locate the Left 4 Dead 2 directory
+//     if var_os("DEBUG").is_some() {println!("Locating L4D2 directory...");}
+//     let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+//     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+
+//     if !gameinfo_path.exists() {
+//         eprintln!("Error: Unable to locate gameinfo.txt file. Is the game installation broken?");
+//         exit(2);
+//     }
+//         // Create the new addon directory
+//         if var_os("DEBUG").is_some() {println!("Creating addon directory: {}", del_name);}
+//     let addon_dir = l4d2_dir.join(format!("{}", del_name));
+//     let mut addon_dir_existed = false;
+//     if addon_dir.exists() {
+//         addon_dir_existed = true;
+//             if var_os("DEBUG").is_some() {println!("Warning: An addon directory with the same name already exists! Assuming this is an update.");}
+//     }
+// }
 // fn gameinfo_reset()  {
 //     if &gameinfo_backup_path.exists() {
 //         copy(&gameinfo_backup_path, &gameinfo_path)?;
