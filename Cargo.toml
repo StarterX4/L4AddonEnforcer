@@ -43,3 +43,5 @@ inherits = "release"
 opt-level = "z"
 panic = "abort"
 strip = true
+
+[target.x86_64-pc-windows-gnu]
