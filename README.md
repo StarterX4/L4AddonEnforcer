@@ -13,7 +13,7 @@ An addon installer for Left 4 Dead 2 that will let you use them on official serv
 **`-n`** corresponds to the common name of the addon, a directory that will be named after, and an entry in the gameinfo.txt.
 You can name it whatever you like, to later know what that addon is.
 
-Example (linux): `./L4AddonEnforcer -f /home/user/Downloads/ion_vocalizer.vpk -n vocalizer`
+Example (linux): `./L4AddonEnforcer -f /home/user/Downloads/ion_vocalizer.vpk -n vocalizer`</br>
 Example (windows): `L4AddonEnforcer.exe -f C:\Users\User\Downloads\ion_vocalizer.vpk -n vocalizer`
 
 **The same way you can update an already installed addon.**
@@ -40,5 +40,5 @@ Installed addons:
 
 **`-u`** corresponds to the name of the already installed addon.
 
-Example (linux): `./L4AddonEnforcer -u AlienSwarmFont`
+Example (linux): `./L4AddonEnforcer -u AlienSwarmFont`</br>
 Example (windows): `L4AddonEnforcer.exe -u AlienSwarmFont`
