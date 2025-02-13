@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use colored::Colorize;
 // use path_dedot::ParseDot;
 use md5::{Digest, Md5};
@@ -17,9 +18,11 @@ fn main() -> std::io::Result<()> {
     let mut addon_file = String::new();
     //let addon_path = PathBuf::new();
     let mut name = String::new();
-    //let mut del_name = String::new();
+    let mut del_name = String::new();
     let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
+    let mut list = false;
     let mut verbose = false;
+    let mut install = true;
 
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 {
@@ -31,26 +34,31 @@ fn main() -> std::io::Result<()> {
                         addon_file = value.clone();
                     } else {
                         eprintln!("{} No addon.vpk file provided for {}", "Error:".red(), arg);
-                        exit(22);
+                        exit(22)
                     }
                 }
-                // "-d" | "--delete" => {
-                //     if let Some(value) = iter.next() {
-                //         del_name = value.clone();
-                //     } else {
-                //         eprintln!("Error: No addon name provided for {}", arg);
-                //         exit(22);
-                //     }
-                // },
+                "-l" | "--list" => {
+                    install = false;
+                    list = true;
+                },
                 "-n" | "--name" => {
                     if let Some(value) = iter.next() {
                         name = value.clone();
                     } else {
                         eprintln!("{} No value provided for {}", "Error:".red(), arg);
-                        exit(22);
+                        exit(22)
                     }
                 }
                 //"-R" | "--reset" => gameinfo_reset(),
+                "-u" | "--uninstall" => {
+                    if let Some(value) = iter.next() {
+                        install = false;
+                        del_name = value.clone();
+                    } else {
+                        eprintln!("Error: No addon name provided for {}", arg);
+                        exit(22)
+                    }
+                },
                 "-v" | "--verbose" => {
                     verbose = true;
                 }
@@ -61,7 +69,7 @@ fn main() -> std::io::Result<()> {
         }
     } else {
         println!("{} No options were passed!", "Error:".red());
-        exit(22);
+        exit(22)
     }
 
     // Require both arguments on installation
@@ -97,9 +105,9 @@ fn main() -> std::io::Result<()> {
     if var_os("DEBUG").is_some() {
         println!("{} {} {:?}", "[D]".blue(), "Addon path:".bold(), addon_path);
     }
-    if !addon_path.is_file() {
+    if !addon_path.is_file() && install {
         eprintln!("{} Invalid addon file path!", "Error:".red());
-        exit(2); // 'No such file or directory'
+        exit(2) // 'No such file or directory'
     }
 
     // Locate the Left 4 Dead 2 directory
@@ -114,7 +122,7 @@ fn main() -> std::io::Result<()> {
             "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
             "Error:".red()
         );
-        exit(2);
+        exit(2)
     }
 
     if var_os("DEBUG").is_some() || verbose {
@@ -166,6 +174,92 @@ fn main() -> std::io::Result<()> {
         }
     }
 
+    // Read the gameinfo.txt file
+    let contents = read_to_string(&gameinfo_path)?;
+
+    // Split the file into lines
+    let mut lines: Vec<&str> = contents.lines().collect();
+
+    let excl_addons = vec![
+            "update",
+            "left4dead2_dlc3",
+            "left4dead2_dlc2",
+            "left4dead2_dlc1",
+            "hl2",
+            "|gameinfo_path|.",
+        ];
+
+    // List the installed custom addons
+    if list {
+        let mut SearchPaths = false;
+        if lines
+            .iter()
+            .any(|line| line.contains("SearchPaths"))
+            {
+                println!("{}", "Installed addons:".bold());
+                for line in lines.iter() {
+                    if line.contains("SearchPaths") {
+                        SearchPaths = true;
+                    } else if SearchPaths && line.contains("}") {
+                        SearchPaths = false;
+                    }
+                    if SearchPaths && line.contains("Game")
+                    && !excl_addons.iter().any(|&s| line.contains(s)) {
+                        println!("{}", line.trim_start_matches('\t').trim_start_matches("Game").replace("\t\t\t\t", "\t"));
+                    }
+                }
+                return Ok(());
+            }
+            exit(0)
+    }
+
+    // Delete the selected addon
+    if !del_name.is_empty() && !excl_addons.iter().any(|&s| del_name.contains(s))
+    {
+        if lines
+        .iter()
+        .any(|line| line.contains("Game") && line.contains(&del_name))
+        {
+            let index = lines
+            .iter()
+            .position(|line| line.contains("Game") && line.contains(&del_name))
+            .unwrap();
+            lines.remove(index);
+            let new_contents = lines.join("\n");
+            write(&gameinfo_path, new_contents)?;
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Removing line \n{} \nfrom gameinfo.txt", "[D]".blue(), index);
+            }
+        }
+        else {
+            eprintln!("{} {} not found in the gameinfo.txt file!", "Error:".red(), del_name);
+            exit(22)
+        }
+        let del_addon_dir = l4d2_dir.join(format!("{}", del_name));
+        if del_addon_dir.exists()
+        {
+            if del_addon_dir.is_dir()
+            {
+                std::fs::remove_dir_all(&del_addon_dir)?;
+                println!("Uninstalled {} successfully.", del_name.italic());
+                exit(0)
+            }
+            else {
+                if var_os("DEBUG").is_some() || verbose {
+                    println!("{} {} appears to not be a directory! (filesystem damaged? installation failed?)", "[D]".blue(), del_addon_dir.display());
+                }
+            }
+        }
+        exit(0)
+    }
+    else {
+        if excl_addons.iter().any(|&s| del_name.contains(s))
+        {
+            eprintln!("{} Core game components cannot be uninstalled!", "Error:".red());
+            exit(22)
+        }
+    }
+
     // Create the new addon directory
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Creating addon directory: {}", "[D]".blue(), name);
@@ -198,21 +292,16 @@ fn main() -> std::io::Result<()> {
     }
     copy(&addon_path, &destination)?;
 
-    // Read the gameinfo.txt file
-    let contents = read_to_string(&gameinfo_path)?;
-
     // The line to insert
     let new_line = format!("\t\t\tGame\t\t\t\t{}", name);
 
-    // Split the file into lines
-    let mut lines: Vec<&str> = contents.lines().collect();
 
     if lines
         .iter()
         .any(|line| line.contains("Game") && line.contains(&name))
         && addon_dir_existed
     {
-        println!("Updated {} successfully.", name);
+        println!("Updated {} successfully.", name.italic());
     } else {
         // Find the line with "Game update"
         let index = lines
@@ -228,7 +317,7 @@ fn main() -> std::io::Result<()> {
 
         // Write the updated contents back to the file
         write(&gameinfo_path, new_contents)?;
-        println!("Installed {} successfully.", name);
+        println!("Installed {} successfully.", name.italic());
     }
 
     Ok(())
