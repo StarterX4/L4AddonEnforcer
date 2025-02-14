@@ -434,7 +434,7 @@ const HELP: Help = Help(sections!(
                 Long ["Name of the addon that will be installed/updated," "a directory that will be named after," "and an entry in the gameinfo.txt."
                 "You can name it whatever you like, to later know what that addon is."]
             }
-            "-u, --uninstall" => {
+            "-u, --uninstall <NAME>" => {
                 ["Uninstall the already installed addon"]
 			}
             "-h, --help" => {
