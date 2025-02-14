@@ -7,6 +7,7 @@ name = "L4AddonEnforcer"
 version = "0.0.1"
 dependencies = [
  "colored",
+ "helptext",
  "md-5",
  "path-dedot",
  "steamlocate",
@@ -90,6 +91,12 @@ dependencies = [
  "typenum",
  "version_check",
 ]
+
+[[package]]
+name = "helptext"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1414477f020f1eabd1598459fb57b3ef77eb5f0beceedcbb478d9b9a8b9e9e4f"
 
 [[package]]
 name = "home"

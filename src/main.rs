@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use colored::Colorize;
+use helptext::{Help, sections};
 // use path_dedot::ParseDot;
 use md5::{Digest, Md5};
 use std::{
@@ -62,8 +63,8 @@ fn main() -> std::io::Result<()> {
                 "-v" | "--verbose" => {
                     verbose = true;
                 }
-                // "-h" => print_short_help(true),
-                // "--help" => print_long_help(true),
+                "-h" => print_short_help(true),
+                "--help" => print_long_help(true),
                 _ => println!("Invalid argument: {}", args[1]),
             }
         }
@@ -411,3 +412,85 @@ fn l4d2_path() -> Result<PathBuf, LoaderError> {
 //     Ok(());
 //     }
 // }
+
+
+const HELP: Help = Help(sections!(
+    [{env!("CARGO_PKG_NAME")} " " {env!("CARGO_PKG_VERSION")}]
+    ["Use " c:"-h" " for short descriptions and " c:"--help" " for more details."]
+    []
+    "USAGE" {
+        [{env!("CARGO_PKG_NAME")} " [OPTIONS] <ARGS>"]
+    }
+    "OPTIONS" {
+        table Auto {
+            "-a, -f, --addon, --file <PATH>" => {
+                ["VPK Addon file path"]
+            }
+            "-l, --list" => {
+                ["List currently installed addons"]
+            }
+            "-n, --name <NAME>" => {
+                ["Name for the addon that will be installed/updated"]
+                Long ["Name of the addon that will be installed/updated," "a directory that will be named after," "and an entry in the gameinfo.txt."
+                "You can name it whatever you like, to later know what that addon is."]
+            }
+            "-u, --uninstall" => {
+                ["Uninstall the already installed addon"]
+			}
+            "-h, --help" => {
+                ["Print help information"]
+                Long ["Use " c:"-h" " for short descriptions and " c:"--help" " for more details."]
+            }
+			"-v, --verbose" => {
+				["Enable verbose output"]
+                Long ["Enable verbose output, showing more details about the operations being performed."]
+			}
+            // "-V, --version" => {
+            //     ["Print version information"]
+            // }
+//             "-W, --warnings <DIAGNOSTICS>" => {
+//                 Short ["Disable certain warnings (disable all with " c:"-W0" ")"]
+//                 Long ["Disable some or all warnings. A single warning can be disabled by specifying
+// the name followed by " c:"=0" ", for example:
+
+//     " c!"-Wcompat=0" "
+
+// Multiple warnings can be disabled by setting this option multiple times, or
+// using a comma-separated list:
+
+//     " c!"-Wcompat=0 -Wdeprecated=0
+//     -Wcompat=0,deprecated=0" "
+
+// To disable all warnings, use " c:"-W0" ".
+
+// Currently, the following warnings can be disabled:"]
+//                 Long table Compact {
+//                     "compat"     => { ["Compatibility warnings"] }
+//                     "deprecated" => { ["A used feature will be removed in the future"] }
+//                 }
+//             }
+        }
+    }
+    "EXAMPLE" {
+        [g:{env!("CARGO_PKG_NAME")} " " c:"-f /home/user/Downloads/ion_vocalizer.vpk -n vocalizer"]
+		[g:{env!("CARGO_PKG_NAME")} " " c:"-u vocalizer"]
+    }
+));
+
+fn print_short_help(use_colors: bool) {
+	#![allow(unused_must_use)]
+    HELP.write(
+        &mut std::io::stdout().lock(),
+        false,  // don't show long help
+        use_colors,
+    );
+}
+
+fn print_long_help(use_colors: bool) {
+	#![allow(unused_must_use)]
+    HELP.write(
+        &mut std::io::stdout().lock(),
+        true,  // show long help
+        use_colors,
+    );
+}

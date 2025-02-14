@@ -12,6 +12,7 @@ homepage = "https://github.com/StarterX4/L4AddonEnforcer"
 
 [dependencies]
 colored = "3.0.0"
+helptext = "0.1.1"
 md-5 = "0.10.6"
 path-dedot = "3.1.1"
 steamlocate = "2.0.1"
