@@ -105,21 +105,21 @@ jobs:
           name: ${{ matrix.target }}-L4AddonEnforcer.sha256
           path: ${{ env.PATH_BINARY }}.sha256
 
-      - name: '[Optional] Publish Artifact'
-        #if: ${{ github.event_name == 'release' }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.PATH_BINARY }}
-          asset_name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
-          tag: ${{ github.ref }}
-          overwrite: true
-      - name: '[Optional] Publish Artifact (shasum)'
-        #if: ${{ github.event_name == 'release' }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.PATH_BINARY }}.sha256
-          asset_name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}.sha256
-          tag: ${{ github.ref }}
-          overwrite: true
+      # - name: '[Optional] Publish Artifact'
+      #   if: ${{ github.event_name == 'release' }}
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.PATH_BINARY }}
+      #     asset_name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
+      # - name: '[Optional] Publish Artifact (shasum)'
+      #   if: ${{ github.event_name == 'release' }}
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.PATH_BINARY }}.sha256
+      #     asset_name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}.sha256
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
