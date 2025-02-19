@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use clap::Parser;
 use colored::Colorize;
 use helptext::{Help, sections};
 // use path_dedot::ParseDot;
@@ -15,63 +16,63 @@ use std::{
 use steamlocate::SteamDir;
 use thiserror::Error;
 
-fn main() -> std::io::Result<()> {
-    let mut addon_file = String::new();
-    //let addon_path = PathBuf::new();
-    let mut name = String::new();
-    let mut del_name = String::new();
-    let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
-    let mut list = false;
-    let mut verbose = false;
-    let mut install = true;
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, value_name = "FILE_PATH")]
+    file: Option<String>,
+    #[arg(short, long, value_name = "NAME")]
+    name: Option<String>,
+    #[arg(short, long, value_name = "NAME")]
+    uninstall: Option<String>,
+    #[arg(short, long)]
+    list: bool,
+    #[arg(short, long)]
+    verbose: bool,
+    #[arg(short)]
+    help: bool,
+    #[arg(long = "help")]
+    help_long: bool,
+}
 
-    let args: Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        let mut iter = args.iter().skip(1);
-        while let Some(arg) = iter.next() {
-            match arg.as_str() {
-                "-a" | "-f" | "--addon" | "--file" => {
-                    if let Some(value) = iter.next() {
-                        addon_file = value.clone();
-                    } else {
-                        eprintln!("{} No addon.vpk file provided for {}", "Error:".red(), arg);
-                        exit(22)
-                    }
-                }
-                "-l" | "--list" => {
-                    install = false;
-                    list = true;
-                },
-                "-n" | "--name" => {
-                    if let Some(value) = iter.next() {
-                        name = value.clone();
-                    } else {
-                        eprintln!("{} No value provided for {}", "Error:".red(), arg);
-                        exit(22)
-                    }
-                }
-                //"-R" | "--reset" => gameinfo_reset(),
-                "-u" | "--uninstall" => {
-                    if let Some(value) = iter.next() {
-                        install = false;
-                        del_name = value.clone();
-                    } else {
-                        eprintln!("Error: No addon name provided for {}", arg);
-                        exit(22)
-                    }
-                },
-                "-v" | "--verbose" => {
-                    verbose = true;
-                }
-                "-h" => print_short_help(true),
-                "--help" => print_long_help(true),
-                _ => println!("Invalid argument: {}", args[1]),
-            }
-        }
-    } else {
-        println!("{} No options were passed!", "Error:".red());
+fn main() -> Result<(), LoaderError> {
+    let args = Args::parse();
+
+    if args.file.is_none() && args.name.is_some() {
+        eprintln!("{} No addon.vpk file provided for installation", "Error:".red());
+        println!("Type {} / {} for more information", "-h".blue(), "--help".blue());
         exit(22)
     }
+    
+    if let Some(addon_file) = args.file {
+        // Install or update logic
+        if let Some(name) = args.name {
+            install_addon(&addon_file, &name, args.verbose)?;
+        } else {
+            eprintln!("{} No addon name provided for installation", "Error:".red());
+            println!("Type {} / {} for more information", "-h".blue(), "--help".blue());
+            exit(22)
+        }
+    } else if let Some(name) = args.uninstall {
+        // Uninstall logic
+        uninstall_addon(&name, args.verbose)?;
+    } else if args.list {
+        // List addons
+        list_addons(args.verbose)?;
+    } else if args.help {
+        // Help logic
+        print_short_help(true);
+    } else if args.help_long {
+        // Long help logic
+        print_long_help(true);
+    }
+
+
+    Ok(())
+}
+
+fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<(), LoaderError> {
+    let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
 
     // Require both arguments on installation
     if (name.is_empty() && !addon_file.is_empty()) || (!name.is_empty() && addon_file.is_empty()) {
@@ -106,7 +107,7 @@ fn main() -> std::io::Result<()> {
     if var_os("DEBUG").is_some() {
         println!("{} {} {:?}", "[D]".blue(), "Addon path:".bold(), addon_path);
     }
-    if !addon_path.is_file() && install {
+    if !addon_path.is_file() {
         eprintln!("{} Invalid addon file path!", "Error:".red());
         exit(2) // 'No such file or directory'
     }
@@ -181,86 +182,6 @@ fn main() -> std::io::Result<()> {
     // Split the file into lines
     let mut lines: Vec<&str> = contents.lines().collect();
 
-    let excl_addons = vec![
-            "update",
-            "left4dead2_dlc3",
-            "left4dead2_dlc2",
-            "left4dead2_dlc1",
-            "hl2",
-            "|gameinfo_path|.",
-        ];
-
-    // List the installed custom addons
-    if list {
-        let mut SearchPaths = false;
-        if lines
-            .iter()
-            .any(|line| line.contains("SearchPaths"))
-            {
-                println!("{}", "Installed addons:".bold());
-                for line in lines.iter() {
-                    if line.contains("SearchPaths") {
-                        SearchPaths = true;
-                    } else if SearchPaths && line.contains("}") {
-                        SearchPaths = false;
-                    }
-                    if SearchPaths && line.contains("Game")
-                    && !excl_addons.iter().any(|&s| line.contains(s)) {
-                        println!("{}", line.trim_start_matches('\t').trim_start_matches("Game").replace("\t\t\t\t", "\t"));
-                    }
-                }
-                return Ok(());
-            }
-            exit(0)
-    }
-
-    // Delete the selected addon
-    if !del_name.is_empty() && !excl_addons.iter().any(|&s| del_name.contains(s))
-    {
-        if lines
-        .iter()
-        .any(|line| line.contains("Game") && line.contains(&del_name))
-        {
-            let index = lines
-            .iter()
-            .position(|line| line.contains("Game") && line.contains(&del_name))
-            .unwrap();
-            lines.remove(index);
-            let new_contents = lines.join("\n");
-            write(&gameinfo_path, new_contents)?;
-            if var_os("DEBUG").is_some() || verbose {
-                println!("{} Removing line \n{} \nfrom gameinfo.txt", "[D]".blue(), index);
-            }
-        }
-        else {
-            eprintln!("{} {} not found in the gameinfo.txt file!", "Error:".red(), del_name);
-            exit(22)
-        }
-        let del_addon_dir = l4d2_dir.join(format!("{}", del_name));
-        if del_addon_dir.exists()
-        {
-            if del_addon_dir.is_dir()
-            {
-                std::fs::remove_dir_all(&del_addon_dir)?;
-                println!("Uninstalled {} successfully.", del_name.italic());
-                exit(0)
-            }
-            else {
-                if var_os("DEBUG").is_some() || verbose {
-                    println!("{} {} appears to not be a directory! (filesystem damaged? installation failed?)", "[D]".blue(), del_addon_dir.display());
-                }
-            }
-        }
-        exit(0)
-    }
-    else {
-        if excl_addons.iter().any(|&s| del_name.contains(s))
-        {
-            eprintln!("{} Core game components cannot be uninstalled!", "Error:".red());
-            exit(22)
-        }
-    }
-
     // Create the new addon directory
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Creating addon directory: {}", "[D]".blue(), name);
@@ -323,6 +244,170 @@ fn main() -> std::io::Result<()> {
 
     Ok(())
 }
+
+fn list_addons(verbose: bool) -> Result<(), LoaderError> {
+    // Locate the Left 4 Dead 2 directory
+    if var_os("DEBUG").is_some() || verbose {
+        println!("{} Locating L4D2 directory...", "[D]".blue());
+    }
+    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+
+    if !gameinfo_path.exists() {
+        eprintln!(
+            "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
+            "Error:".red()
+        );
+        exit(2)
+    }
+
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "Gameinfo.txt path:".bold(),
+            gameinfo_path
+        );
+    }
+
+    // Read the gameinfo.txt file
+    let contents = read_to_string(&gameinfo_path)?;
+
+    // Split the file into lines
+    let lines: Vec<&str> = contents.lines().collect();
+
+    let excl_addons = vec![
+            "update",
+            "left4dead2_dlc3",
+            "left4dead2_dlc2",
+            "left4dead2_dlc1",
+            "hl2",
+            "|gameinfo_path|.",
+        ];
+
+    // List the installed custom addons
+    let mut SearchPaths = false;
+    if lines
+        .iter()
+        .any(|line| line.contains("SearchPaths"))
+        {
+            println!("{}", "Installed addons:".bold());
+            for line in lines.iter() {
+                if line.contains("SearchPaths") {
+                    SearchPaths = true;
+                } else if SearchPaths && line.contains("}") {
+                    SearchPaths = false;
+                }
+                if SearchPaths && line.contains("Game")
+                && !excl_addons.iter().any(|&s| line.contains(s)) {
+                    println!("{}", line.trim_start_matches('\t').trim_start_matches("Game").replace("\t\t\t\t", "\t"));
+                }
+            }
+            return Ok(());
+        }
+    Ok(())
+}
+
+fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
+    if del_name.is_empty() {
+        eprintln!("{} No addon name provided for uninstallation", "Error:".red());
+        exit(2)
+    }
+
+    // Locate the Left 4 Dead 2 directory
+    if var_os("DEBUG").is_some() || verbose {
+        println!("{} Locating L4D2 directory...", "[D]".blue());
+    }
+    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+
+    if !gameinfo_path.exists() {
+        eprintln!(
+            "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
+            "Error:".red()
+        );
+        exit(2)
+    }
+
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "Gameinfo.txt path:".bold(),
+            gameinfo_path
+        );
+    }
+
+    // Read the gameinfo.txt file
+    let contents = read_to_string(&gameinfo_path)?;
+
+    // Split the file into lines
+    let mut lines: Vec<&str> = contents.lines().collect();
+
+    let excl_addons = vec![
+            "update",
+            "left4dead2_dlc3",
+            "left4dead2_dlc2",
+            "left4dead2_dlc1",
+            "hl2",
+            "|gameinfo_path|.",
+        ];
+
+    // Delete the selected addon
+    if !del_name.is_empty() && !excl_addons.iter().any(|&s| del_name.contains(s))
+    {
+        if lines
+        .iter()
+        .any(|line| line.contains("Game") && line.contains(&del_name))
+        {
+            let index = lines
+            .iter()
+            .position(|line| line.contains("Game") && line.contains(&del_name))
+            .unwrap();
+            lines.remove(index);
+            let new_contents = lines.join("\n");
+            write(&gameinfo_path, new_contents)?;
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Removing line \n{} \nfrom gameinfo.txt", "[D]".blue(), index);
+            }
+        }
+        else {
+            eprintln!("{} {} not found in the gameinfo.txt file!", "Error:".red(), del_name);
+            exit(22)
+        }
+        let del_addon_dir = l4d2_dir.join(format!("{}", del_name));
+        if del_addon_dir.exists()
+        {
+            if del_addon_dir.is_dir()
+            {
+                std::fs::remove_dir_all(&del_addon_dir)?;
+                println!("Uninstalled {} successfully.", del_name.italic());
+                exit(0)
+            }
+            else {
+                if var_os("DEBUG").is_some() || verbose {
+                    println!("{} {} appears to not be a directory! (filesystem damaged? installation failed?)", "[D]".blue(), del_addon_dir.display());
+                }
+            }
+        }
+        exit(0)
+    }
+    else {
+        if excl_addons.iter().any(|&s| del_name.contains(s))
+        {
+            eprintln!("{} Core game components cannot be uninstalled!", "Error:".red());
+            exit(22)
+        }
+    }
+    Ok(())
+}
+// fn mainold() -> std::io::Result<()> {
+//                 _ => println!("Invalid argument: {}", args[1]),
+//              else {
+//         println!("{} No options were passed!", "Error:".red());
+//         exit(22)
+//     }
+// }
 
 #[derive(Debug, Error)]
 pub enum LoaderError {
@@ -387,25 +472,6 @@ fn l4d2_path() -> Result<PathBuf, LoaderError> {
     }
 }
 
-// fn deletion () {
-//     // Locate the Left 4 Dead 2 directory
-//     if var_os("DEBUG").is_some() {println!("Locating L4D2 directory...");}
-//     let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
-//     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
-
-//     if !gameinfo_path.exists() {
-//         eprintln!("Error: Unable to locate gameinfo.txt file. Is the game installation broken?");
-//         exit(2);
-//     }
-//         // Create the new addon directory
-//         if var_os("DEBUG").is_some() {println!("Creating addon directory: {}", del_name);}
-//     let addon_dir = l4d2_dir.join(format!("{}", del_name));
-//     let mut addon_dir_existed = false;
-//     if addon_dir.exists() {
-//         addon_dir_existed = true;
-//             if var_os("DEBUG").is_some() {println!("Warning: An addon directory with the same name already exists! Assuming this is an update.");}
-//     }
-// }
 // fn gameinfo_reset()  {
 //     if &gameinfo_backup_path.exists() {
 //         copy(&gameinfo_backup_path, &gameinfo_path)?;
@@ -423,7 +489,7 @@ const HELP: Help = Help(sections!(
     }
     "OPTIONS" {
         table Auto {
-            "-a, -f, --addon, --file <PATH>" => {
+            "-f, --file <FILE>" => {
                 ["VPK Addon file path"]
             }
             "-l, --list" => {
@@ -431,7 +497,7 @@ const HELP: Help = Help(sections!(
             }
             "-n, --name <NAME>" => {
                 ["Name for the addon that will be installed/updated"]
-                Long ["Name of the addon that will be installed/updated," "a directory that will be named after," "and an entry in the gameinfo.txt."
+                Long ["a directory that will be named after," "and an entry in the gameinfo.txt.\n"
                 "You can name it whatever you like, to later know what that addon is."]
             }
             "-u, --uninstall <NAME>" => {
@@ -443,11 +509,11 @@ const HELP: Help = Help(sections!(
             }
 			"-v, --verbose" => {
 				["Enable verbose output"]
-                Long ["Enable verbose output, showing more details about the operations being performed."]
+                Long ["showing more details about the operations being performed."]
 			}
-            // "-V, --version" => {
-            //     ["Print version information"]
-            // }
+            "-V, --version" => {
+                ["Print version information"]
+            }
 //             "-W, --warnings <DIAGNOSTICS>" => {
 //                 Short ["Disable certain warnings (disable all with " c:"-W0" ")"]
 //                 Long ["Disable some or all warnings. A single warning can be disabled by specifying
