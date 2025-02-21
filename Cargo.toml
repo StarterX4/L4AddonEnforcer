@@ -1,6 +1,6 @@
 [package]
 name = "L4AddonEnforcer"
-version = "0.1.0"
+version = "0.1.99"
 edition = "2021"
 license = "LGPL-3.0-only"
 authors = ["Dominik Adrian Grzywak"]
@@ -18,9 +18,8 @@ md-5 = "0.10.6"
 path-dedot = "3.1.1"
 steamlocate = "2.0.1"
 thiserror = "2.0.11"
-#fltk = { version = "1.4", default-features = false, features = ["use-ninja","use-wayland"]}
-#fltk-sys = "1.5.2"
-#fltk-theme = "0.7"
+fltk = { version = "1.4", default-features = false, features = ["use-ninja","use-wayland"]}
+fltk-theme = "0.7"
 #nix = "0.29.0"
 #regex = "1.11.1"
 #walkdir = "2.5.0"

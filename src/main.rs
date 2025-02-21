@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+
 #![allow(non_snake_case)]
 use clap::Parser;
 use colored::Colorize;
@@ -15,6 +17,9 @@ use std::{
 };
 use steamlocate::SteamDir;
 use thiserror::Error;
+
+mod gui;
+mod gui_theming;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -65,13 +70,15 @@ fn main() -> Result<(), LoaderError> {
     } else if args.help_long {
         // Long help logic
         print_long_help(true);
+    } else {
+        gui::main();
     }
 
 
     Ok(())
 }
 
-fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<(), LoaderError> {
+fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, LoaderError> {
     let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
 
     // Require both arguments on installation
@@ -217,13 +224,14 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<(), Load
     // The line to insert
     let new_line = format!("\t\t\tGame\t\t\t\t{}", name);
 
-
+    let mut up = false;
     if lines
         .iter()
         .any(|line| line.contains("Game") && line.contains(&name))
         && addon_dir_existed
     {
         println!("Updated {} successfully.", name.italic());
+        up = true;
     } else {
         // Find the line with "Game update"
         let index = lines
@@ -241,8 +249,7 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<(), Load
         write(&gameinfo_path, new_contents)?;
         println!("Installed {} successfully.", name.italic());
     }
-
-    Ok(())
+    if up {Ok(2)} else {Ok(1)}
 }
 
 fn list_addons(verbose: bool) -> Result<(), LoaderError> {
