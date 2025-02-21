@@ -82,6 +82,7 @@ jobs:
       OPENSSL_STATIC: 1
     steps:
       - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@master
       - uses: Swatinem/rust-cache@v2
       - uses: actions-rs/toolchain@v1
         with:
