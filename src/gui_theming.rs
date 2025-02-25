@@ -15,6 +15,7 @@ pub use fltk_theme::colors::sweet::dark::*; // get all the dark sweet colors
 
 pub fn apply_theme() {
     app::set_font_size(14);
+    app::set_font(Font::by_name("Noto Sans"));
     let bg = windowBackgroundColor.to_rgb();
     app::background(bg.0, bg.1, bg.2);
     let ctrl = controlAccentColor.to_rgb(); //Sweet's original green color for checkboxes
@@ -91,7 +92,8 @@ pub struct RInput {
 
 fn Rinput_common(inp: &mut Input) {
         inp.set_color(*controlColor);
-        inp.set_selection_color(*selectedControlColor);
+        //inp.set_selection_color(*selectedControlColor);
+        inp.set_selection_color(Color::from_rgb(185, 5, 224));
         inp.set_text_color(*labelColor);
         inp.set_cursor_color(*controlAccentColor);
 }
@@ -218,3 +220,84 @@ impl Deref for ROutput {
 //     }
 // }
 
+// Copilot-transpiled from http://ports.gnu-darwin.org/x11-toolkits/flu/work/FLU_2.14/
+#[derive(Debug, Clone)]
+pub struct SimpleGroup {
+    grp: group::Group,
+    label: Option<String>,
+}
+
+impl SimpleGroup {
+    pub fn new(x: i32, y: i32, w: i32, h: i32, label: Option<&str>) -> SimpleGroup {
+        let mut grp = group::Group::new(x, y, w, h, label);
+        grp.set_frame(FrameType::EngravedFrame);
+        grp.set_align(Align::Inside | Align::TopLeft);
+        SimpleGroup {
+            grp,
+            label: label.map(|s| s.to_string()),
+        }
+    }
+
+    pub fn with_label(x: i32, y: i32, w: i32, h: i32, label: &str) -> SimpleGroup {
+        let mut grp = group::Group::new(x, y, w, h, Some(label));
+        grp.set_frame(FrameType::EngravedFrame);
+        grp.set_align(Align::Inside | Align::TopLeft);
+        SimpleGroup {
+            grp,
+            label: Some(label.to_string()),
+        }
+    }
+
+    pub fn draw(&mut self) {
+        let mut lblW = 0;
+        let mut lblH = 0;
+        let X;
+
+        if let Some(label) = &self.label {
+            if !label.is_empty() {
+                let (w, h) = self.grp.measure_label();
+                lblW = w + 4;
+                lblH = h + 2;
+            }
+        }
+
+        // Align the label
+        X = if self.grp.align().contains(Align::Left) {
+            4
+        } else if self.grp.align().contains(Align::Right) {
+            self.grp.width() - lblW - 8
+        } else {
+            self.grp.width() / 2 - lblW / 2 - 2
+        };
+
+        // Draw the main group box
+        if !self.grp.damage() {
+            draw::draw_box(
+                self.grp.frame(),
+                self.grp.x(),
+                self.grp.y() + lblH / 2,
+                self.grp.width(),
+                self.grp.height() - lblH / 2,
+                self.grp.color(),
+            );
+        }
+
+        // Clip and draw the children
+        draw::push_clip(
+            self.grp.x() + 2,
+            self.grp.y() + lblH + 1,
+            self.grp.width() - 4,
+            self.grp.height() - lblH - 3,
+        );
+        self.grp.draw_children();
+        draw::pop_clip();
+
+        // Clear behind the label and draw it
+        draw::set_draw_color(self.grp.color());
+        draw::draw_rectf(self.grp.x() + X, self.grp.y(), lblW + 4, lblH);
+        draw::set_draw_color(self.grp.label_color());
+        if let Some(ref label) = self.label {
+            draw::draw_text2(label, self.grp.x() + X + 2, self.grp.y(), lblW, lblH, Align::Center);
+        }
+    }
+}

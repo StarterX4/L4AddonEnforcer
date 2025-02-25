@@ -9,9 +9,9 @@ use md5::{Digest, Md5};
 use std::{
     /* borrow::Cow, */ env,
     env::var_os,
-    fmt::Debug,
+    fmt::{Debug, self},
     fs::{copy, create_dir_all, read_to_string, remove_file, write, File},
-    io::{BufReader, Read},
+    io::{BufReader, Read, Write},
     path::{Path, PathBuf},
     process::exit,
 };
@@ -32,6 +32,8 @@ struct Args {
     uninstall: Option<String>,
     #[arg(short, long)]
     list: bool,
+    #[arg(short, long)] // TODO
+    quiet: bool,
     #[arg(short, long)]
     verbose: bool,
     #[arg(short)]
@@ -52,7 +54,7 @@ fn main() -> Result<(), LoaderError> {
     if let Some(addon_file) = args.file {
         // Install or update logic
         if let Some(name) = args.name {
-            install_addon(&addon_file, &name, args.verbose)?;
+            let _ = install_addon(&addon_file, &name, args.verbose); // Unused result becase of QuietErr usage?
         } else {
             eprintln!("{} No addon name provided for installation", "Error:".red());
             println!("Type {} / {} for more information", "-h".blue(), "--help".blue());
@@ -60,10 +62,10 @@ fn main() -> Result<(), LoaderError> {
         }
     } else if let Some(name) = args.uninstall {
         // Uninstall logic
-        uninstall_addon(&name, args.verbose)?;
+        let _ = uninstall_addon(&name, args.verbose); // Unused result becase of QuietErr usage?
     } else if args.list {
         // List addons
-        list_addons(args.verbose)?;
+        let _ = list_addons(args.quiet, args.verbose, &mut std::io::stdout()); // Unused result becase of QuietErr usage?
     } else if args.help {
         // Help logic
         print_short_help(true);
@@ -78,16 +80,20 @@ fn main() -> Result<(), LoaderError> {
     Ok(())
 }
 
-fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, LoaderError> {
+fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, Box<dyn std::error::Error>> {
     let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
 
     // Require both arguments on installation
     if (name.is_empty() && !addon_file.is_empty()) || (!name.is_empty() && addon_file.is_empty()) {
-        eprintln!(
-            "{} Both addon name and addon file path must be provided!",
-            "Error:".red()
+        let err = format!(
+            "Both addon name and addon file path must be provided!"
         );
-        exit(22);
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
     // Validate addon name
     if
@@ -103,10 +109,13 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, Loa
         || name.contains('>')
         || name.contains('|')
     {
-        eprintln!("{} Invalid addon name!", "Error:".red());
-        eprintln!("\tName cannot be empty, contain whitespace, or special characters");
-        eprintln!("\tthat are known to cause problems with file managers or filesystems.");
-        exit(36); // 'File name too long' xd
+        let err = format!("Invalid addon name! \n\tName cannot be empty, contain whitespace, or special characters \n\tthat are known to cause problems with file managers or filesystems.");
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     // Validate addon file
@@ -115,8 +124,13 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, Loa
         println!("{} {} {:?}", "[D]".blue(), "Addon path:".bold(), addon_path);
     }
     if !addon_path.is_file() {
-        eprintln!("{} Invalid addon file path!", "Error:".red());
-        exit(2) // 'No such file or directory'
+        let err = format!("Invalid addon file path!");
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     // Locate the Left 4 Dead 2 directory
@@ -127,11 +141,15 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, Loa
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
 
     if !gameinfo_path.exists() {
-        eprintln!(
-            "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
-            "Error:".red()
+        let err = format!(
+            "Unable to locate gameinfo.txt file. Is the game installation broken?"
         );
-        exit(2)
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     if var_os("DEBUG").is_some() || verbose {
@@ -252,7 +270,7 @@ fn install_addon(addon_file: &str, name: &str, verbose: bool) -> Result<i32, Loa
     if up {Ok(2)} else {Ok(1)}
 }
 
-fn list_addons(verbose: bool) -> Result<(), LoaderError> {
+fn list_addons(quiet: bool, verbose: bool, buf_writer: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
     // Locate the Left 4 Dead 2 directory
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Locating L4D2 directory...", "[D]".blue());
@@ -261,11 +279,13 @@ fn list_addons(verbose: bool) -> Result<(), LoaderError> {
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
 
     if !gameinfo_path.exists() {
+        let err = format!("Unable to locate gameinfo.txt file. Is the game installation broken?");
         eprintln!(
-            "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
-            "Error:".red()
+            "{} {}",
+            "Error:".red(),
+            err
         );
-        exit(2)
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     if var_os("DEBUG").is_some() || verbose {
@@ -298,7 +318,7 @@ fn list_addons(verbose: bool) -> Result<(), LoaderError> {
         .iter()
         .any(|line| line.contains("SearchPaths"))
         {
-            println!("{}", "Installed addons:".bold());
+            if !quiet {println!("{}", "Installed addons:".bold());}
             for line in lines.iter() {
                 if line.contains("SearchPaths") {
                     SearchPaths = true;
@@ -307,7 +327,8 @@ fn list_addons(verbose: bool) -> Result<(), LoaderError> {
                 }
                 if SearchPaths && line.contains("Game")
                 && !excl_addons.iter().any(|&s| line.contains(s)) {
-                    println!("{}", line.trim_start_matches('\t').trim_start_matches("Game").replace("\t\t\t\t", "\t"));
+                    let addon = line.trim_start_matches('\t').trim_start_matches("Game").replace("\t\t\t\t", "\t");
+                    writeln!(buf_writer, "{}", addon).unwrap();
                 }
             }
             return Ok(());
@@ -315,10 +336,15 @@ fn list_addons(verbose: bool) -> Result<(), LoaderError> {
     Ok(())
 }
 
-fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
+fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
     if del_name.is_empty() {
-        eprintln!("{} No addon name provided for uninstallation", "Error:".red());
-        exit(2)
+        let err = format!("No addon name provided for uninstallation");
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     // Locate the Left 4 Dead 2 directory
@@ -329,11 +355,15 @@ fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
 
     if !gameinfo_path.exists() {
-        eprintln!(
-            "{} Unable to locate gameinfo.txt file. Is the game installation broken?",
-            "Error:".red()
+        let err = format!(
+            "Unable to locate gameinfo.txt file. Is the game installation broken?"
         );
-        exit(2)
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
     }
 
     if var_os("DEBUG").is_some() || verbose {
@@ -379,8 +409,13 @@ fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
             }
         }
         else {
-            eprintln!("{} {} not found in the gameinfo.txt file!", "Error:".red(), del_name);
-            exit(22)
+            let err = format!("{} not found in the gameinfo.txt file!", del_name);
+            eprintln!(
+                "{} {}",
+                "Error:".red(),
+                err
+            );
+            return Err(Box::new(QuietErr(Some(err))));
         }
         let del_addon_dir = l4d2_dir.join(format!("{}", del_name));
         if del_addon_dir.exists()
@@ -389,7 +424,6 @@ fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
             {
                 std::fs::remove_dir_all(&del_addon_dir)?;
                 println!("Uninstalled {} successfully.", del_name.italic());
-                exit(0)
             }
             else {
                 if var_os("DEBUG").is_some() || verbose {
@@ -397,24 +431,23 @@ fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), LoaderError> {
                 }
             }
         }
-        exit(0)
+        return Ok(())
     }
     else {
         if excl_addons.iter().any(|&s| del_name.contains(s))
         {
-            eprintln!("{} Core game components cannot be uninstalled!", "Error:".red());
-            exit(22)
+            let err = format!("Core game components cannot be uninstalled!");
+            eprintln!(
+                "{} {}",
+                "Error:".red(),
+                err
+            );
+            return Err(Box::new(QuietErr(Some(err))));
         }
     }
     Ok(())
 }
-// fn mainold() -> std::io::Result<()> {
-//                 _ => println!("Invalid argument: {}", args[1]),
-//              else {
-//         println!("{} No options were passed!", "Error:".red());
-//         exit(22)
-//     }
-// }
+
 
 #[derive(Debug, Error)]
 pub enum LoaderError {
@@ -425,6 +458,19 @@ pub enum LoaderError {
     #[error("{0}")]
     Other(String),
 }
+
+#[derive(Debug)]
+pub struct QuietErr(Option<String>);
+impl fmt::Display for QuietErr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(ref msg) = self.0 {
+            write!(f, "{}", msg)
+        } else {
+        write!(f, "")
+        }
+    }   
+}
+impl std::error::Error for QuietErr {}
 
 fn calculate_md5(filepath: &Path) -> Result<String, std::io::Error> {
     let mut file = BufReader::new(File::open(filepath)?); // Buffered for performance
