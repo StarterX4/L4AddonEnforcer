@@ -2,7 +2,12 @@ L4AddonEnforcer
 -----------
 An addon installer for Left 4 Dead 2 that will let you use them on official servers.
 
-### Usage
+### GUI
+![](screenshots/gui1_linux.png)
+![installation](screenshots/gui2_linux.png)
+![renaming](screenshots/gui3_linux.png)
+
+### CLI Usage
 
 #### Installation
 
@@ -42,3 +47,14 @@ Installed addons:
 
 Example (linux): `./L4AddonEnforcer -u AlienSwarmFont`</br>
 Example (windows): `L4AddonEnforcer.exe -u AlienSwarmFont`
+
+#### Renaming
+
+`L4AddonEnforcer -r <old_name> -n <new_name>`
+
+**`-r`** corresponds to the name of the already installed addon.
+
+**`-n`** corresponds to the new name of the addon.
+
+Example (linux): `./L4AddonEnforcer -r vocalizer -n ion_vocalizer`</br>
+Example (windows): `L4AddonEnforcer.exe -r vocalizer -n ion_vocalizer`
