@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use fltk::{browser::{Browser, BrowserType, MultiBrowser}, enums::{Align, Color, *}, frame::Frame, group::{Flex, Pack, PackType}, prelude::*, *};
+use fltk::{browser::{Browser, BrowserType}, enums::{Align, Color}, frame::Frame, group::{Flex, Pack, PackType}, prelude::*, *};
 use crate::gui_theming::*;
 use std::{path::{PathBuf, Path}, sync::{Arc, Mutex}};
 
@@ -12,7 +12,7 @@ pub fn main() {
 	let a = app::App::default();
 	apply_theme();
 	let mut win = window::Window::default()
-		.with_size(400, 600)
+		.with_size(400, 640)
 		.with_label(env!("CARGO_PKG_NAME"))
 		.center_screen();
 
@@ -41,7 +41,7 @@ pub fn main() {
 	let mut hpack = Pack::new(0,0,340,32,"");
 	let selected_file = Arc::new(Mutex::new(RInput::new(20, 20, 255, 40, "Addon File")));
 	let mut btn_browse = RButton::new(0,0,82,32,"Browse...");
-	
+
 	let selected_file_clone = Arc::clone(&selected_file);
 	btn_browse.set_callback(move |_| {
 		if let Some(file_path) = nfc_get_file(dialog::NativeFileChooserType::BrowseFile) {
@@ -56,10 +56,59 @@ pub fn main() {
 
 	let mut title_text = Frame::new(0,0, 64, 10, "");
 	title_text.activate();
-	
+
 	let mut hpack = Pack::new(0,0,340,32,"");
 
 	let mut btn_install = RButton::new(0,0,340,32,"Install");
+	hpack.end();
+	hpack.set_type(PackType::Horizontal);
+
+	let mut title_text = Frame::new(0,0, 64, 10, "");
+	title_text.activate();
+	let mut title_text = Frame::new(0,0, 64, 10, "");
+	title_text.activate();
+	let mut title_text = Frame::new(0,0, 64, 10, "");
+	title_text.activate();
+
+	let mut title_text = Frame::new(10,0, 64, 20, "Currently Installed");
+	title_text.activate();
+	title_text.set_label_color(Color::Light3);
+	title_text.set_align(Align::Inside | Align::Left);
+
+	let mut flex2 = Flex::new(0, 0, 82, 42, "").row();
+    flex2.set_margin(10);
+	let mut spacer = frame::Frame::default().with_size(82, 32);
+	spacer.activate();
+	let mut spacer1 = frame::Frame::default().with_size(82, 32);
+	spacer1.activate();
+	let mut btn_refresh = RButton::new(0,0,82,32,"Refresh");
+	flex2.set_spacing(2);
+    flex2.end();
+
+	let mut hpack = Pack::new(0,0,340,320,"");
+	let mut installed_list = Browser::new(0, 0, 340, 400, "");
+	installed_list.set_color(Color::from_rgb(22, 25, 37));
+	installed_list.set_selection_color(Color::from_rgb(185, 5, 224));
+	installed_list.set_type(BrowserType::Hold);
+
+	// Call list_addons and populate the browser
+	// Capture the output from list_addons
+	let mut output = Vec::new();
+	if let Err(e) = crate::list_addons(true, false, &mut output) {
+		installed_list.set_type(BrowserType::Normal);
+		installed_list.add(&format!("Failed to list addons:"));
+		installed_list.add(&format!("{}", e));
+	} else {
+		let output_str = String::from_utf8(output).unwrap_or_default();
+		for line in output_str.lines() {
+			installed_list.add(line.trim_start_matches('\t'));
+		}
+	}
+	hpack.end();
+	hpack.set_type(PackType::Horizontal);
+
+	let installed_list = Arc::new(Mutex::new(installed_list));
+	let installed_list_clone = Arc::clone(&installed_list);
 	btn_install.set_callback(move |_| {
 		let selected_file_clone = Arc::clone(&selected_file);
 		let name_for_selected_clone = Arc::clone(&name_for_selected);
@@ -80,15 +129,19 @@ pub fn main() {
 					{
 						dialog::alert(center().0 - 200, center().1 - 100, &format!("Invalid addon name!\n\tName cannot be empty, contain whitespace, or special characters\n\tthat are known to cause problems with file managers or filesystems."));
 					} else {
+						let installed_list_ref = Arc::clone(&installed_list_clone);
 						match crate::install_addon(&addon_file, &name, false) {
 							Ok(1) => {
 								dialog::message(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" installed successfully!", name));
+								refresh_installed_list(&installed_list_ref);
 							},
 							Ok(2) => {
 								dialog::message(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" updated successfully!", name));
+								refresh_installed_list(&installed_list_ref);
 							},
 							Ok(other) => {
 								dialog::alert(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" completed with status: {}", name, other));
+								refresh_installed_list(&installed_list_ref);
 							},
 							Err(e) => {
 								dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to install addon \"{}\": {}", name, e));
@@ -103,66 +156,65 @@ pub fn main() {
 		}
 	});
 
-	hpack.end();
-	hpack.set_type(PackType::Horizontal);
-
-	let mut title_text = Frame::new(0,0, 64, 10, "");
-	title_text.activate();
-	let mut title_text = Frame::new(0,0, 64, 10, "");
-	title_text.activate();
-	let mut title_text = Frame::new(0,0, 64, 10, "");
-	title_text.activate();
-
-	let mut title_text = Frame::new(10,0, 64, 20, "Currently Installed");
-	title_text.activate();
-	title_text.set_label_color(Color::Light3);
-	title_text.set_align(Align::Inside | Align::Left);
-
-	let mut title_text = Frame::new(0,0, 64, 10, "");
-	title_text.activate();
-
-	let mut hpack = Pack::new(0,0,340,320,"");
-	let mut installed_list = Browser::new(0, 0, 340, 400, "");
-	installed_list.set_color(Color::from_rgb(22, 25, 37));
-	installed_list.set_selection_color(Color::from_rgb(185, 5, 224));
-	installed_list.set_type(BrowserType::Hold);
-	
-	// Call list_addons and populate the browser
-	// Capture the output from list_addons
-	let mut output = Vec::new();
-	if let Err(e) = crate::list_addons(true, false, &mut output) {
-		installed_list.set_type(BrowserType::Normal);
-		installed_list.add(&format!("Failed to list addons:"));
-		installed_list.add(&format!("{}", e));
-	} else {
-		let output_str = String::from_utf8(output).unwrap_or_default();
-		for line in output_str.lines() {
-			installed_list.add(line.trim_start_matches('\t'));
-		}
-	}
-	hpack.end();
-	hpack.set_type(PackType::Horizontal);
+	let installed_list_clone = Arc::clone(&installed_list);
+	btn_refresh.set_callback(move |_| {
+        let installed_list_ref = Arc::clone(&installed_list_clone);
+		refresh_installed_list(&installed_list_ref);
+    });
 
 	let mut flex2 = Flex::new(0, 0, 82, 42, "").row();
     flex2.set_margin(10);
 	// let mut hpack = Pack::new(0,0,120,32,"");
 	let mut spacer = frame::Frame::default().with_size(82, 32);
 	spacer.activate();
-	let mut spacer1 = frame::Frame::default().with_size(82, 32);
-	spacer1.activate();
+
+	let mut btn_ren = RButton::new(0,0,82,32,"Rename");
+	let installed_list_clone = Arc::clone(&installed_list);
+	btn_ren.set_callback(move |_| {
+		let installed_list = installed_list_clone.lock().unwrap();
+        let selected = installed_list.value();
+		drop(installed_list); // Release the lock
+        if selected > 0 {
+            let addon_name = installed_list_clone.lock().unwrap().text(selected).unwrap();
+            // Perform uninstall action
+			if !addon_name.is_empty() {
+				let ctrl = controlAccentColor.to_rgb();
+				let tmp = controlColor.to_rgb();
+				app::background2(tmp.0, tmp.1, tmp.2);
+				let inp_box = dialog::input(center().0 - 200, center().1 - 100, &format!("Enter new name for addon: {}", addon_name), "");
+					if !inp_box.is_none() {
+						let input = inp_box.unwrap();
+						match crate::rename_addon(&addon_name, &input, false) {
+							Ok(_) => {
+								dialog::alert(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" renamed successfully!", addon_name));
+								refresh_installed_list(&installed_list_clone);
+								},
+							Err(e) => {
+								dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to rename addon \"{}\": {}", addon_name, e));
+							},
+						}
+					}
+			app::background2(ctrl.0, ctrl.1, ctrl.2);
+			} else {
+                dialog::alert(center().0 - 200, center().1 - 100, "No addon selected to rename!");
+            }
+		}
+    });
+
 	let mut btn_del = RButton::new(0,0,82,32,"Uninstall");
 
-	let mut installed_list_clone = installed_list.clone();
+	let installed_list_clone = Arc::clone(&installed_list);
     btn_del.set_callback(move |_| {
-        let selected = installed_list_clone.value();
+        let mut installed_list = installed_list_clone.lock().unwrap();
+        let selected = installed_list.value();
         if selected > 0 {
-            let addon_name = installed_list_clone.text(selected).unwrap();
+            let addon_name = installed_list.text(selected).unwrap();
             // Perform uninstall action
 			if !addon_name.is_empty() {
 				match crate::uninstall_addon(&addon_name, false) {
 					Ok(_) => {
            				dialog::alert(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" uninstalled successfully!", addon_name));
-						installed_list_clone.remove(selected);
+						installed_list.remove(selected);
 						},
 					Err(e) => {
                         dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to uninstall addon \"{}\": {}", addon_name, e));
@@ -171,11 +223,11 @@ pub fn main() {
 			}
 			else {
                 dialog::alert(center().0 - 200, center().1 - 100, "No addon selected to uninstall!");
-				
+
             }
         }
     });
-	
+
 	// hpack.end();
 	// hpack.set_type(PackType::Horizontal);
 	// hpack.with_align(Align::Right);
@@ -224,4 +276,25 @@ fn nfc_get_file(mode: dialog::NativeFileChooserType) -> Option<PathBuf> {
 			dialog::NativeFileChooserAction::Cancelled => None,
 		},
 	}
+}
+
+fn refresh_installed_list(installed_list_clone: &Arc<Mutex<Browser>>) {
+    let mut installed_list = installed_list_clone.lock().unwrap();
+    // Call list_addons and populate the browser
+    // Capture the output from list_addons
+    let mut output = Vec::new();
+    if let Err(e) = crate::list_addons(true, false, &mut output) {
+        installed_list.set_type(BrowserType::Normal);
+        installed_list.add(&format!("Failed to list addons:"));
+        installed_list.add(&format!("{}", e));
+    } else {
+        installed_list.clear();
+		if installed_list.get_type::<BrowserType>() == BrowserType::Normal {
+			installed_list.set_type(BrowserType::Hold);
+		}
+        let output_str = String::from_utf8(output).unwrap_or_default();
+        for line in output_str.lines() {
+            installed_list.add(line.trim_start_matches('\t'));
+        }
+    }
 }

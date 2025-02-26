@@ -1,8 +1,9 @@
 // From github.com/Nepsod/Rozbark
+#![allow(unused)]
 
-use fltk::{button::*, input::Input, output::Output, enums::*, valuator::*, prelude::*, utils::oncelock::Lazy, *};
+use fltk::{button::*, frame::Frame, group::Pack, input::Input, output::Output, enums::*, window::Window, prelude::*, *};
 //use group::Scroll;
-use std::ops::{Deref, DerefMut};
+use std::{ops::{Deref, DerefMut}, sync::{Arc, Mutex}};
 pub use fltk_theme::widget_schemes::sweet::frames::*;
 pub use fltk_theme::{SchemeType, WidgetScheme};
 //use fltk_sys::
@@ -164,140 +165,5 @@ impl Deref for ROutput {
     impl DerefMut for ROutput {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.out
-    }
-}
-
-// Scrollbar — doesn't work just for scrollbar, 
-// but modifies the whole group area, except the scrollbar ofc (wtf)
-
-// pub struct RScrollbar {
-//     sb: Scrollbar,
-// }
-
-// fn RScrollbar_common(sb: &mut Scrollbar) {
-//     static inactive_color: Lazy<Color> = Lazy::new(|| Color::from_rgba_tuple((66, 75, 112, 128))); // Semi-transparent version
-//     let active_color = Color::from_rgb(66, 75, 112);
-
-//     sb.set_color(*inactive_color); // Initial color (semi-transparent)
-
-//     sb.handle(move |s, ev| match ev {
-//         Event::Enter => {
-//             s.set_color(active_color);
-//             s.redraw();
-//             true
-//         }
-//         Event::Leave => {
-//             s.set_color(*inactive_color);
-//             s.redraw();
-//             true
-//         }
-//         _ => false,
-//     });
-// }
-
-// impl RScrollbar { // also for as a group::scroll replacement [?]
-//     pub fn new(x: i32, y: i32, w: i32, h: i32) -> RScrollbar {
-//         let mut sb = Scrollbar::new(x, y, w, h, "");
-//         RScrollbar_common(&mut sb);
-//         Self { sb }
-//     }
-//     pub fn default() -> RScrollbar {
-//         let mut sb = Scrollbar::default();
-//         RScrollbar_common(&mut sb);
-//         Self { sb }
-//     }
-// }
-
-// impl Deref for RScrollbar {
-//     type Target = Scrollbar;
-//     fn deref(&self) -> &Self::Target {
-//         &self.sb
-//     }
-// }
-//     impl DerefMut for RScrollbar {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.sb
-//     }
-// }
-
-// Copilot-transpiled from http://ports.gnu-darwin.org/x11-toolkits/flu/work/FLU_2.14/
-#[derive(Debug, Clone)]
-pub struct SimpleGroup {
-    grp: group::Group,
-    label: Option<String>,
-}
-
-impl SimpleGroup {
-    pub fn new(x: i32, y: i32, w: i32, h: i32, label: Option<&str>) -> SimpleGroup {
-        let mut grp = group::Group::new(x, y, w, h, label);
-        grp.set_frame(FrameType::EngravedFrame);
-        grp.set_align(Align::Inside | Align::TopLeft);
-        SimpleGroup {
-            grp,
-            label: label.map(|s| s.to_string()),
-        }
-    }
-
-    pub fn with_label(x: i32, y: i32, w: i32, h: i32, label: &str) -> SimpleGroup {
-        let mut grp = group::Group::new(x, y, w, h, Some(label));
-        grp.set_frame(FrameType::EngravedFrame);
-        grp.set_align(Align::Inside | Align::TopLeft);
-        SimpleGroup {
-            grp,
-            label: Some(label.to_string()),
-        }
-    }
-
-    pub fn draw(&mut self) {
-        let mut lblW = 0;
-        let mut lblH = 0;
-        let X;
-
-        if let Some(label) = &self.label {
-            if !label.is_empty() {
-                let (w, h) = self.grp.measure_label();
-                lblW = w + 4;
-                lblH = h + 2;
-            }
-        }
-
-        // Align the label
-        X = if self.grp.align().contains(Align::Left) {
-            4
-        } else if self.grp.align().contains(Align::Right) {
-            self.grp.width() - lblW - 8
-        } else {
-            self.grp.width() / 2 - lblW / 2 - 2
-        };
-
-        // Draw the main group box
-        if !self.grp.damage() {
-            draw::draw_box(
-                self.grp.frame(),
-                self.grp.x(),
-                self.grp.y() + lblH / 2,
-                self.grp.width(),
-                self.grp.height() - lblH / 2,
-                self.grp.color(),
-            );
-        }
-
-        // Clip and draw the children
-        draw::push_clip(
-            self.grp.x() + 2,
-            self.grp.y() + lblH + 1,
-            self.grp.width() - 4,
-            self.grp.height() - lblH - 3,
-        );
-        self.grp.draw_children();
-        draw::pop_clip();
-
-        // Clear behind the label and draw it
-        draw::set_draw_color(self.grp.color());
-        draw::draw_rectf(self.grp.x() + X, self.grp.y(), lblW + 4, lblH);
-        draw::set_draw_color(self.grp.label_color());
-        if let Some(ref label) = self.label {
-            draw::draw_text2(label, self.grp.x() + X + 2, self.grp.y(), lblW, lblH, Align::Center);
-        }
     }
 }
