@@ -36,6 +36,8 @@ struct Args {
     quiet: bool,
     #[arg(short, long)]
     rename: Option<String>,
+    #[arg(long)]
+    reset: bool,
     #[arg(short, long)]
     verbose: bool,
     #[arg(short)]
@@ -84,6 +86,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Type {} / {} for more information", "-h".blue(), "--help".blue());
             exit(22)
         }
+    } else if args.reset {
+        // Gameinfo.txt reset logic
+        let _ = gameinfo_reset(args.verbose); // Unused result becase of QuietErr usage?
     } else if args.help {
         // Help logic
         print_short_help(true);
@@ -631,6 +636,83 @@ fn uninstall_addon(del_name: &str, verbose: bool) -> Result<(), Box<dyn std::err
     Ok(())
 }
 
+fn gameinfo_reset(verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
+    // Locate the Left 4 Dead 2 directory
+    if var_os("DEBUG").is_some() || verbose {
+        println!("{} Locating L4D2 directory...", "[D]".blue());
+    }
+    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+
+    if !gameinfo_path.exists() {
+        let err = format!(
+            "Unable to locate gameinfo.txt file. Is the game installation broken?"
+        );
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
+    }
+
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "Gameinfo.txt path:".bold(),
+            gameinfo_path
+        );
+    }
+    // Calculate the MD5 of the gameinfo.txt file
+    let gameinfo_md5 = calculate_md5(&gameinfo_path).expect("Failed to calculate MD5");
+
+    let gameinfo_backup_path = gameinfo_path.with_extension("txt.orig");
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "gameinfo_backup_path:".bold(),
+            gameinfo_backup_path
+        );
+    }
+    if !gameinfo_backup_path.exists() {
+        if gameinfo_md5 != gameinfo_orig_md5 {
+            println!(
+                "{} gameinfo.txt file seems to be modified, but no backup is present!",
+                "Warning:".yellow()
+            );
+            println!("");
+            println!("If you haven't already modified the gameinfo.txt, this is probably");
+            println!(
+                "\ta {}'s bug you can report to the dev!",
+                crate::env!("CARGO_PKG_NAME")
+            );
+            println!(
+				"\t\tYour gameinfo.txt MD5 hash is: {}",
+				gameinfo_md5.bold());
+        }
+        else {
+            println!("gameinfo.txt is already at its default state!");
+        }
+    } else {
+        if gameinfo_md5 != gameinfo_orig_md5 {
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Copying gameinfo.txt backup ({:?}) to {:?}",
+                            "[D]".blue(),
+                            &gameinfo_backup_path.file_name().unwrap().to_string_lossy(),
+                            &gameinfo_path.file_name().unwrap().to_string_lossy());
+            }
+            copy(&gameinfo_backup_path, &gameinfo_path)?;
+            println!("Succesfully reset gameinfo.txt to default.");
+        }
+        else {
+            println!("gameinfo.txt is already at its default state!");
+        }
+    }
+    Ok(())
+}
 
 #[derive(Debug, Error)]
 pub enum LoaderError {
@@ -708,13 +790,6 @@ fn l4d2_path() -> Result<PathBuf, LoaderError> {
     }
 }
 
-// fn gameinfo_reset()  {
-//     if &gameinfo_backup_path.exists() {
-//         copy(&gameinfo_backup_path, &gameinfo_path)?;
-//     Ok(());
-//     }
-// }
-
 
 const HELP: Help = Help(sections!(
     [{env!("CARGO_PKG_NAME")} " " {env!("CARGO_PKG_VERSION")}]
@@ -732,12 +807,18 @@ const HELP: Help = Help(sections!(
                 ["List currently installed addons"]
             }
             "-n, --name <NAME>" => {
-                ["Name for the addon that will be installed/updated"]
+                ["Name for the addon that will be installed/updated or renamed (if already installed)"]
                 Long ["a directory that will be named after," "and an entry in the gameinfo.txt.\n"
                 "You can name it whatever you like, to later know what that addon is."]
             }
             "-u, --uninstall <NAME>" => {
                 ["Uninstall the already installed addon"]
+			}
+            "-r, --rename <CURRENT_NAME>" => {
+                ["Rename the already installed addon"]
+			}
+            "--reset" => {
+                ["Reset the current gameinfo.txt to its default state using the existing backup"]
 			}
             "-h, --help" => {
                 ["Print help information"]
@@ -776,6 +857,12 @@ const HELP: Help = Help(sections!(
     "EXAMPLE" {
         [g:{env!("CARGO_PKG_NAME")} " " c:"-f /home/user/Downloads/ion_vocalizer.vpk -n vocalizer"]
 		[g:{env!("CARGO_PKG_NAME")} " " c:"-u vocalizer"]
+        [g:{env!("CARGO_PKG_NAME")} " " c:"-r vocalizer -n ion_vocalizer"]
+    }
+    "ENVIRONMENT VARIABLES" {
+        [c:"L4D2_DIR"
+            "Directory where the game is installed"
+        ]
     }
 ));
 

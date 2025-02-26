@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "L4AddonEnforcer"
-version = "0.1.99"
+version = "0.2.0"
 dependencies = [
  "clap",
  "colored",

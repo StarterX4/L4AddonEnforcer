@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use fltk::{browser::{Browser, BrowserType}, enums::{Align, Color}, frame::Frame, group::{Flex, Pack, PackType}, prelude::*, *};
+use fltk::{app::version, browser::{Browser, BrowserType}, enums::{Align, Color, Shortcut}, frame::Frame, group::{Flex, Pack, PackType}, menu::SysMenuBar, prelude::*, *};
 use crate::gui_theming::*;
 use std::{path::{PathBuf, Path}, sync::{Arc, Mutex}};
 
@@ -16,7 +16,28 @@ pub fn main() {
 		.with_label(env!("CARGO_PKG_NAME"))
 		.center_screen();
 
-	let vpack = Pack::new(30,5,360,300,"");
+	let mut menubar = SysMenuBar::new(294, 0, 80, 24, "");
+	menubar.add(
+		"&Program/&About",
+		Shortcut::None,
+		menu::MenuFlag::Normal,
+		|_menu| {
+			let ver = env!(
+				"CARGO_PKG_VERSION"
+			);
+			dialog::message_default(&format!("\t\tL4AddonEnforcer\n \t\tv{} | using FLTK v{} \n https://github.com/StarterX4/L4AddonEnforcer \n\nA gameinfo.txt—way addon manager for Left 4 Dead 2.", ver, version()));
+		},
+	);
+	menubar.add(
+		"&Program/&Quit\t",
+		Shortcut::Ctrl | 'q',
+		menu::MenuFlag::Normal,
+		|_menu| {
+			std::process::exit(0);
+		},
+	);
+
+	let vpack = Pack::new(30,15,360,300,"");
 	let mut title_text = Frame::new(10,0, 64, 20, "Installation");
 	title_text.activate();
 	title_text.set_label_color(Color::Light3);

@@ -1,14 +1,14 @@
 [package]
 name = "L4AddonEnforcer"
-version = "0.1.99"
-edition = "2021"
+version = "0.2.0"
+edition = "2024"
 license = "LGPL-3.0-only"
 authors = ["Dominik Adrian Grzywak"]
 description = "An addon installer for Left 4 Dead 2 that will let you use them on official servers"
 categories = ["command-line-utilities", "game-tools", "gui"]
 homepage = "https://github.com/StarterX4/L4AddonEnforcer"
 #repository = "https://github.com/StarterX4/L4AddonEnforcer"
-#rust-version = "1.82"
+rust-version = "1.85"
 
 [dependencies]
 clap = { version = "4.5.29", features = ["derive"] }
