@@ -1,6 +1,6 @@
 [package]
 name = "L4AddonEnforcer"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 license = "LGPL-3.0-only"
 authors = ["Dominik Adrian Grzywak"]

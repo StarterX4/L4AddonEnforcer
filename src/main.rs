@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 #![allow(non_snake_case)]
+#![windows_subsystem = "windows"]
 use clap::Parser;
 use colored::Colorize;
 use helptext::{Help, sections};
