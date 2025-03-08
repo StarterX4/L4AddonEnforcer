@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
-use fltk::{app::version, browser::{Browser, BrowserType}, enums::{Align, Color, Shortcut}, frame::Frame, group::{Flex, Pack, PackType}, menu::SysMenuBar, prelude::*, *};
+use fltk::{app::version, browser::{Browser, BrowserType}, enums::{Align, Color, Event, Shortcut}, frame::Frame, group::{Flex, Pack, PackType}, menu::SysMenuBar, prelude::*, *};
 use crate::gui_theming::*;
 use std::{path::{PathBuf, Path}, sync::{Arc, Mutex}};
 
@@ -12,7 +12,7 @@ pub fn main() {
 	let a = app::App::default();
 	apply_theme();
 	let mut win = window::Window::default()
-		.with_size(400, 640)
+		.with_size(400, 685)
 		.with_label(env!("CARGO_PKG_NAME"))
 		.center_screen();
 
@@ -121,8 +121,14 @@ pub fn main() {
 		installed_list.add(&format!("{}", e));
 	} else {
 		let output_str = String::from_utf8(output).unwrap_or_default();
-		for line in output_str.lines() {
-			installed_list.add(line.trim_start_matches('\t'));
+		if !output_str.is_empty() {
+			for line in output_str.lines() {
+				installed_list.add(line.trim_start_matches('\t'));
+			}
+		} else {
+			installed_list.set_type(BrowserType::Normal);
+            installed_list.add(&format!("@c@iNo addons are currently installed."));
+            installed_list.add(&format!("@c@iWould you like to install one (or more)?"));
 		}
 	}
 	hpack.end();
@@ -255,6 +261,92 @@ pub fn main() {
 	flex2.set_spacing(2);
     flex2.end();
 
+	let mut flex3 = Flex::new(0, 0, 82, 42, "").row();
+    flex3.set_margin(10);
+
+	let mut btn_pug = RButton::new(0,0,82,32,"PuG mode: Unknown");
+	match crate::PuG_mode_check(false) {
+		Err(_e) => {
+		btn_pug.set_label("PuG mode is unavailable");
+		btn_pug.deactivate();
+		}, 
+		Ok(1) => {
+		btn_pug.set_label("PuG mode: Enabled");
+		},
+		Ok(2) => {
+		btn_pug.set_label("PuG mode: Disabled");
+		},
+		Ok(_other) => {
+		btn_pug.set_label("PuG mode: Unknown");
+		},
+	}
+	let installed_list_clone = Arc::clone(&installed_list);
+	let mut btn_pug_clone = btn_pug.clone();
+	btn_pug.set_callback(move |_| {
+		match crate::PuG_mode_switch(false) {
+			Ok(1) => {
+				   dialog::alert(center().0 - 200, center().1 - 100, &format!("PuG Mode is now enabled."));
+				   btn_pug_clone.set_label("PuG mode: Enabled");
+				   refresh_installed_list(&installed_list_clone);
+				},
+			Ok(2) => {
+				dialog::alert(center().0 - 200, center().1 - 100, &format!("PuG Mode is now disabled."));
+				btn_pug_clone.set_label("PuG mode: Disabled");
+				refresh_installed_list(&installed_list_clone);
+            },
+			Ok(other) => {
+				dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to switch PuG Mode: {}", other));
+				btn_pug_clone.set_label("PuG mode: Unknown");
+				refresh_installed_list(&installed_list_clone);
+            },
+			Err(e) => {
+				dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to change PuG Mode: {}", e));
+			},
+		}
+	});
+
+	let mut btn_reset = RButton::new(0,0,82,32,"gameinfo.txt reset");
+	btn_reset.set_color(Color::from_rgb(168, 6, 44));
+	btn_reset.set_selection_color(Color::from_rgb(246, 25, 76));
+	btn_reset.handle(move |b, ev| match ev {
+		Event::Enter => {
+			//b.set_frame(OS_DEFAULT_HOVERED_UP_BOX);
+			b.set_color(Color::from_rgb(246, 25, 76));
+			b.redraw();
+			true
+		}
+		Event::Leave => {
+			//b.set_frame(OS_DEFAULT_BUTTON_UP_BOX);
+			b.set_color(Color::from_rgb(168, 6, 44));
+			b.redraw();
+			true
+		}
+		_ => false,
+	});
+
+	let installed_list_clone = Arc::clone(&installed_list);
+	btn_reset.set_callback(move |_| {
+		match dialog::choice2(center().0 - 200, center().1 - 100,
+			"Are you sure you want to reset gameinfo.txt to default? \nThis operation cannot be undone.", "&Yes", "&No", "") {
+			Some(0) => {
+				match crate::gameinfo_reset(false) {
+					Ok(_) => {
+						dialog::alert(center().0 - 200, center().1 - 100, &format!("Succesfully reset gameinfo.txt to default."));
+						refresh_installed_list(&installed_list_clone);
+						},
+					Err(e) => {
+						dialog::alert(center().0 - 200, center().1 - 100, &format!("Failed to reset gameinfo.txt: {}", e));
+					},
+				}
+			},
+			Some(1) => (),
+			Some(_) | None  => (),
+		}
+	});
+
+	flex3.set_spacing(2);
+    flex3.end();
+
 	vpack.end();
 
 	win.end();
@@ -306,7 +398,7 @@ fn refresh_installed_list(installed_list_clone: &Arc<Mutex<Browser>>) {
     let mut output = Vec::new();
     if let Err(e) = crate::list_addons(true, false, &mut output) {
         installed_list.set_type(BrowserType::Normal);
-        installed_list.add(&format!("Failed to list addons:"));
+        installed_list.add(&format!("@bFailed to list addons:"));
         installed_list.add(&format!("{}", e));
     } else {
         installed_list.clear();
@@ -314,8 +406,14 @@ fn refresh_installed_list(installed_list_clone: &Arc<Mutex<Browser>>) {
 			installed_list.set_type(BrowserType::Hold);
 		}
         let output_str = String::from_utf8(output).unwrap_or_default();
-        for line in output_str.lines() {
-            installed_list.add(line.trim_start_matches('\t'));
-        }
+		if !output_str.is_empty() {
+			for line in output_str.lines() {
+				installed_list.add(line.trim_start_matches('\t'));
+			}
+		} else {
+			installed_list.set_type(BrowserType::Normal);
+            installed_list.add(&format!("@c@iNo addons are currently installed."));
+            installed_list.add(&format!("@c@iWould you like to install one (or more)?"));
+		}
     }
 }

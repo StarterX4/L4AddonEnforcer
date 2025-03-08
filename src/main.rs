@@ -35,6 +35,10 @@ struct Args {
     list: bool,
     #[arg(short, long)] // TODO
     quiet: bool,
+    #[arg(short = 'p', long = "pug")]
+    pug_switch: bool,
+    #[arg(short = 'P', long = "checkpug")]
+    pug_check: bool,
     #[arg(short, long)]
     rename: Option<String>,
     #[arg(long)]
@@ -78,6 +82,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if args.list {
         // List addons
         let _ = list_addons(args.quiet, args.verbose, &mut std::io::stdout()); // Unused result becase of QuietErr usage?
+    } else if args.pug_switch {
+        // PuG mode switch logic
+        let _ = PuG_mode_switch(args.verbose);
+    } else if args.pug_check {
+        // PuG mode check logic
+        let _ = PuG_mode_check(args.verbose);
     } else if let Some(ren) = args.rename {
         // Rename logic
         if let Some(name) = args.name {
@@ -695,7 +705,13 @@ fn gameinfo_reset(verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
 				gameinfo_md5.bold());
         }
         else {
-            println!("gameinfo.txt is already at its default state!");
+            let err = format!("gameinfo.txt is already at its default state!");
+            eprintln!(
+                "{} {}",
+                "Error:".red(),
+                err
+            );
+            return Err(Box::new(QuietErr(Some(err))));
         }
     } else {
         if gameinfo_md5 != gameinfo_orig_md5 {
@@ -709,10 +725,202 @@ fn gameinfo_reset(verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
             println!("Succesfully reset gameinfo.txt to default.");
         }
         else {
-            println!("gameinfo.txt is already at its default state!");
+            let err = format!("gameinfo.txt is already at its default state!");
+            eprintln!(
+                "{} {}",
+                "Error:".red(),
+                err
+            );
+            return Err(Box::new(QuietErr(Some(err))));
         }
     }
     Ok(())
+}
+
+fn PuG_mode_switch(verbose: bool) -> Result<i32, Box<dyn std::error::Error>> {
+    let gameinfo_orig_md5 = format!("586b3b0b39bc44ddfb07792b1932c479");
+    // Locate the Left 4 Dead 2 directory
+    if var_os("DEBUG").is_some() || verbose {
+        println!("{} Locating L4D2 directory...", "[D]".blue());
+    }
+    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+
+    if !gameinfo_path.exists() {
+        let err = format!(
+            "Unable to locate gameinfo.txt file. Is the game installation broken?"
+        );
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
+    }
+
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "Gameinfo.txt path:".bold(),
+            gameinfo_path
+        );
+    }
+    // Calculate the MD5 of the gameinfo.txt file
+    let gameinfo_md5 = calculate_md5(&gameinfo_path).expect("Failed to calculate MD5");
+
+    let gameinfo_backup_path = gameinfo_path.with_extension("txt.orig");
+
+    let gameinfo_custom = gameinfo_path.with_extension("txt.custom");
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "gameinfo_backup_path:".bold(),
+            gameinfo_backup_path
+        );
+    }
+    if !gameinfo_backup_path.exists() {
+        if gameinfo_md5 != gameinfo_orig_md5 {
+            let err = format!(
+                "gameinfo.txt file seems to be modified, but no backup is present! 
+                \n If you haven't already modified the gameinfo.txt, this is probably 
+                \n\ta {}'s bug you can report to the dev!
+                \n\t\tYour gameinfo.txt MD5 hash is: {}",
+                crate::env!("CARGO_PKG_NAME"),
+                gameinfo_md5);
+            eprintln!(
+                "{} {}",
+                "Error:".red(),
+                err
+            );
+            return Err(Box::new(QuietErr(Some(err))));
+        }
+        else {
+            // Create a backup of the gameinfo.txt file. Because why not?
+            copy(&gameinfo_path, &gameinfo_backup_path)?;
+            if !gameinfo_custom.exists() {
+                let err = format!(
+                    "gameinfo.txt is already at its default state, but no custom gameinfo.txt is to be found! 
+                    \n (PuG Mode is disabled, and gameinfo in unmodified vanilla state)"
+                );
+                eprintln!(
+                    "{} {}",
+                    "Error:".red(),
+                    err
+                );
+                return Err(Box::new(QuietErr(Some(err))));
+            }
+            else {
+                // Copy custom to gameinfo.txt
+                if var_os("DEBUG").is_some() || verbose {
+                    println!("{} Copying custom gameinfo.txt ({:?}) to {:?}",
+                                "[D]".blue(),
+                                &gameinfo_custom.file_name().unwrap().to_string_lossy(),
+                                &gameinfo_path.file_name().unwrap().to_string_lossy());
+                }
+                copy(&gameinfo_custom, &gameinfo_path)?;
+                if var_os("DEBUG").is_some() || verbose {
+                    println!("{} Deleting unneeded custom gameinfo.txt copy ({:?})",
+                                "[D]".blue(),
+                                &gameinfo_custom.file_name().unwrap().to_string_lossy());
+                }
+                remove_file(&gameinfo_custom)?;
+                println!("PuG Mode is now disabled.");
+                return Ok(2);
+            }
+        }
+    } else {
+        if gameinfo_md5 != gameinfo_orig_md5 {
+            // if gameinfo_custom.exists() {
+            //     let err = format!(
+            //         "gameinfo.txt file seems to be modified, and a custom gameinfo.txt is present! 
+            //         \n If you haven't already modified the gameinfo.txt, this is probably 
+            //         \n\ta {}'s bug you can report to the dev!
+            //         \n\t\tYour gameinfo.txt MD5 hash is: {}",
+            //         crate::env!("CARGO_PKG_NAME"),
+            //         gameinfo_md5
+            //     );
+            //     eprintln!(
+            //         "{} {}",
+            //         "Error:".red(),
+            //         err
+            //     );
+            //     return Err(Box::new(QuietErr(Some(err))));
+            // }
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Copying current custom gameinfo.txt ({:?}) to the custom backup {:?}",
+                            "[D]".blue(),
+                            &gameinfo_path.file_name().unwrap().to_string_lossy(),
+                            &gameinfo_custom.file_name().unwrap().to_string_lossy());
+            }
+            copy(&gameinfo_path, &gameinfo_custom)?;
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Copying gameinfo.txt backup ({:?}) to {:?}",
+                            "[D]".blue(),
+                            &gameinfo_backup_path.file_name().unwrap().to_string_lossy(),
+                            &gameinfo_path.file_name().unwrap().to_string_lossy());
+            }
+            copy(&gameinfo_backup_path, &gameinfo_path)?;
+            println!("PuG Mode is now enabled.");
+            return Ok(1);
+        }
+        else {
+            // Copy custom to gameinfo.txt
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Copying custom gameinfo.txt ({:?}) to {:?}",
+                            "[D]".blue(),
+                            &gameinfo_custom.file_name().unwrap().to_string_lossy(),
+                            &gameinfo_path.file_name().unwrap().to_string_lossy());
+            }
+            copy(&gameinfo_custom, &gameinfo_path)?;
+            if var_os("DEBUG").is_some() || verbose {
+                println!("{} Deleting unneeded custom gameinfo.txt copy ({:?})",
+                            "[D]".blue(),
+                            &gameinfo_custom.file_name().unwrap().to_string_lossy());
+            }
+            remove_file(&gameinfo_custom)?;
+            println!("PuG Mode is now disabled.");
+            return Ok(2);
+        }
+    }
+}
+
+fn PuG_mode_check(verbose: bool) -> Result<i32, Box<dyn std::error::Error>> {
+    // Locate the Left 4 Dead 2 directory
+    if var_os("DEBUG").is_some() || verbose {
+        println!("{} Locating L4D2 directory...", "[D]".blue());
+    }
+    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
+    let gameinfo_custom = gameinfo_path.with_extension("txt.custom");
+    if !gameinfo_path.exists() {
+        let err = format!(
+            "Unable to locate gameinfo.txt file. Is the game installation broken?"
+        );
+        eprintln!(
+            "{} {}",
+            "Error:".red(),
+            err
+        );
+        return Err(Box::new(QuietErr(Some(err))));
+    }
+    if var_os("DEBUG").is_some() || verbose {
+        println!(
+            "{} {} {:?}",
+            "[D]".blue(),
+            "Gameinfo.txt path:".bold(),
+            gameinfo_path
+        );
+    }
+
+    if !gameinfo_custom.exists() {
+        println!("PuG Mode is currently disabled.");
+        Ok(2)
+    } else {
+        println!("PuG Mode is currently enabled.");
+        Ok(1)
+    }
 }
 
 #[derive(Debug, Error)]
@@ -818,6 +1026,15 @@ const HELP: Help = Help(sections!(
             "-r, --rename <CURRENT_NAME>" => {
                 ["Rename the already installed addon"]
 			}
+            "p, --pug" => {
+                ["Switches the PuG Mode (on/off)."]
+                Long ["Temporarily backup the current gameinfo.txt and restore the vanilla one.\n"
+                "Or vice versa.\n"
+                "Useful for competitive PuG-type servers that enforce file consistency."]
+			}
+            "-P, --checkpug" => {
+                ["Checks the PuG Mode status."]
+            }
             "--reset" => {
                 ["Reset the current gameinfo.txt to its default state using the existing backup"]
 			}
