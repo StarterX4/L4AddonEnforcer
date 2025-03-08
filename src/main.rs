@@ -17,7 +17,6 @@ use std::{
     process::exit,
 };
 use steamlocate::SteamDir;
-use thiserror::Error;
 
 mod gui;
 mod gui_theming;
@@ -309,7 +308,7 @@ fn list_addons(quiet: bool, verbose: bool, buf_writer: &mut impl Write) -> Resul
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Locating L4D2 directory...", "[D]".blue());
     }
-    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let l4d2_dir = l4d2_path()?;
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
 
     if !gameinfo_path.exists() {
@@ -891,7 +890,7 @@ fn PuG_mode_check(verbose: bool) -> Result<i32, Box<dyn std::error::Error>> {
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Locating L4D2 directory...", "[D]".blue());
     }
-    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let l4d2_dir = l4d2_path()?;
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
     let gameinfo_custom = gameinfo_path.with_extension("txt.custom");
     if !gameinfo_path.exists() {
@@ -921,16 +920,6 @@ fn PuG_mode_check(verbose: bool) -> Result<i32, Box<dyn std::error::Error>> {
         println!("PuG Mode is currently enabled.");
         Ok(1)
     }
-}
-
-#[derive(Debug, Error)]
-pub enum LoaderError {
-    #[error("Failed to find L4D2 install location")]
-    L4D2NotFound,
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error("{0}")]
-    Other(String),
 }
 
 #[derive(Debug)]
@@ -981,20 +970,30 @@ fn calculate_md5(filepath: &Path) -> Result<String, std::io::Error> {
 //     assert_eq!("../bar", clean_path("../bar"));
 // }
 
-fn l4d2_path() -> Result<PathBuf, LoaderError> {
+fn l4d2_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let err = "Failed to find L4D2 install location".to_string();
+    let err1 = "Failed to find Steam installation location".to_string();
+    let err2 = "Failed to locate Left 4 Dead 2 directory".to_string();
     if let Some(path) = var_os("L4D2_DIR") {
         let path: PathBuf = path.into();
         if path.is_dir() {
             Ok(path)
         } else {
-            Err(LoaderError::L4D2NotFound)
+            eprintln!(
+                "{} {}: {}",
+                "Error:".red(),
+                err,
+                err1
+            );
+            let e = format!("\n{}: \n{}", err, err1);
+            return Err(Box::new(QuietErr(Some(e))));
         }
     } else {
         let (app, library) = SteamDir::locate()
-            .map_err(|_| LoaderError::L4D2NotFound)?
+            .map_err(|_| {let e = format!("{}: {}", err.clone(), err1); eprintln!("{} {}", "Error:".red(), e); QuietErr(Some(e))})?
             .find_app(550)
-            .map_err(|_| LoaderError::L4D2NotFound)?
-            .ok_or(LoaderError::L4D2NotFound)?;
+            .map_err(|_| {let e = format!("{}: {}", err.clone(), err2); eprintln!("{} {}", "Error:".red(), e); QuietErr(Some(e))})?
+            .ok_or({let e = err.clone(); eprintln!("{} {}", "Error:".red(), e); QuietErr(Some(e))})?;
         Ok(library.resolve_app_dir(&app))
     }
 }
@@ -1026,7 +1025,7 @@ const HELP: Help = Help(sections!(
             "-r, --rename <CURRENT_NAME>" => {
                 ["Rename the already installed addon"]
 			}
-            "p, --pug" => {
+            "-p, --pug" => {
                 ["Switches the PuG Mode (on/off)."]
                 Long ["Temporarily backup the current gameinfo.txt and restore the vanilla one.\n"
                 "Or vice versa.\n"
