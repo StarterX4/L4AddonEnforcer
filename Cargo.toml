@@ -1,6 +1,6 @@
 [package]
 name = "L4AddonEnforcer"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2024"
 license = "LGPL-3.0-only"
 authors = ["Dominik Adrian Grzywak"]
@@ -11,19 +11,15 @@ repository = "https://github.com/StarterX4/L4AddonEnforcer"
 rust-version = "1.85"
 
 [dependencies]
-clap = { version = "4.5.29", default-features = false, features = ["derive", "std"] }
+clap = { version = "4.5.32", default-features = false, features = ["derive", "std"] }
 colored = "3.0.0"
 helptext = "0.1.1"
 md-5 = "0.10.6"
 path-dedot = "3.1.1"
 steamlocate = "2.0.1"
 thiserror = "2.0.11"
-fltk = { version = "1.4", default-features = false, features = ["use-ninja","use-wayland"]}
+fltk = { version = "1.5", default-features = false, features = ["use-ninja","use-wayland"]}
 fltk-theme = "0.7"
-#nix = "0.29.0"
-#regex = "1.11.1"
-#walkdir = "2.5.0"
-#which = "7.0.1"
 
 # The default release profile. It contains all optimizations, without
 # sacrificing debug info. With this profile (like in the standard
