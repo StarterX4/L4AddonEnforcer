@@ -3,9 +3,12 @@ L4AddonEnforcer
 An addon installer for Left 4 Dead 2 that will let you use them on official servers.
 
 ### GUI
-![](screenshots/gui1_linux.png)
-![installation](screenshots/gui2_linux.png)
+![](screenshots/gui1_linux.png) ![installation](screenshots/gui2_linux.png)
 ![renaming](screenshots/gui3_linux.png)
+
+Since v0.3.0 there's a PuG mode switch (on/off) to temporarily restore the vanilla backup, to let you play on servers that impose file consistency.
+
+![](screenshots/gui_since-0.3.0_linux.png)
 
 ### CLI Usage
 
@@ -58,3 +61,7 @@ Example (windows): `L4AddonEnforcer.exe -u AlienSwarmFont`
 
 Example (linux): `./L4AddonEnforcer -r vocalizer -n ion_vocalizer`</br>
 Example (windows): `L4AddonEnforcer.exe -r vocalizer -n ion_vocalizer`
+
+#### More usage...
+
+Use `L4AddonEnforcer -h` (simple) or `L4AddonEnforcer --help` (detailed) to learn more.
