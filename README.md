@@ -6,7 +6,7 @@ An addon installer for Left 4 Dead 2 that will let you use them on official serv
 ![](screenshots/gui1_linux.png) ![installation](screenshots/gui2_linux.png)
 ![renaming](screenshots/gui3_linux.png)
 
-Since v0.3.0 there's a PuG mode switch (on/off) to temporarily restore the vanilla backup, to let you play on servers that impose file consistency.
+Since v0.3.0 there's a PuG mode switch (on/off) to temporarily restore the vanilla backup, to let you play on servers that impose file consistency. As well as a button to completely and irreversibly reset the current gameinfo to the default.
 
 ![](screenshots/gui_since-0.3.0_linux.png)
 
