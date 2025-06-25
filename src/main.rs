@@ -19,10 +19,13 @@ use steamlocate::SteamDir;
 
 mod gui;
 mod gui_theming;
+mod vpk_getdata;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    #[arg(short, long, value_name = "FILE_PATH")]
+    auto: Option<String>,
     #[arg(short, long, value_name = "FILE_PATH")]
     file: Option<String>,
     #[arg(short, long, value_name = "NAME")]
@@ -114,6 +117,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if args.help_long {
         // Long help logic
         print_long_help(true);
+    } else if let Some(addonpath) = args.auto {
+        let _ = vpk_getdata::main(&addonpath, /*args.verbose*/);
     } else {
         gui::main();
     }
