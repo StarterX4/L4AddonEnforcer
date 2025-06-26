@@ -118,7 +118,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Long help logic
         print_long_help(true);
     } else if let Some(addonpath) = args.auto {
-        let _ = vpk_getdata::main(&addonpath, /*args.verbose*/);
+        let _ = vpk_getdata::main(&addonpath, args.verbose);
     } else {
         gui::main();
     }
