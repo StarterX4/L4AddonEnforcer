@@ -21,7 +21,6 @@ thiserror = "2.0.11"
 fltk = { version = "1.5", default-features = false, features = ["use-ninja","use-wayland"]}
 fltk-theme = "0.7"
 sourcepak = { version = "0.3.0", features = ["mem-map"] }
-filebuffer = "1.0.0"
 regex = "1.11.1"
 
 # The default release profile. It contains all optimizations, without

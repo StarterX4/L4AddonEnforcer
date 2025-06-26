@@ -115,7 +115,7 @@ pub fn main() {
 	// Call list_addons and populate the browser
 	// Capture the output from list_addons
 	let mut output = Vec::new();
-	if let Err(e) = crate::list_addons(true, false, &mut output) {
+	if let Err(e) = crate::list_addons::list_addons(true, false, &mut output) {
 		installed_list.set_type(BrowserType::Normal);
 		installed_list.add(&format!("Failed to list addons:"));
 		installed_list.add(&format!("{}", e));
@@ -157,7 +157,7 @@ pub fn main() {
 						dialog::alert(center().0 - 200, center().1 - 100, &format!("Invalid addon name!\n\tName cannot be empty, contain whitespace, or special characters\n\tthat are known to cause problems with file managers or filesystems."));
 					} else {
 						let installed_list_ref = Arc::clone(&installed_list_clone);
-						match crate::install_addon(&addon_file, &name, false) {
+						match crate::install_addon::install_addon(&addon_file, &name, false) {
 							Ok(1) => {
 								dialog::message(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" installed successfully!", name));
 								refresh_installed_list(&installed_list_ref);
@@ -211,7 +211,7 @@ pub fn main() {
 				let inp_box = dialog::input(center().0 - 200, center().1 - 100, &format!("Enter new name for addon: {}", addon_name), "");
 					if !inp_box.is_none() {
 						let input = inp_box.unwrap();
-						match crate::rename_addon(&addon_name, &input, false) {
+						match crate::rename_addon::rename_addon(&addon_name, &input, false) {
 							Ok(_) => {
 								dialog::alert(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" renamed successfully!", addon_name));
 								refresh_installed_list(&installed_list_clone);
@@ -238,7 +238,7 @@ pub fn main() {
             let addon_name = installed_list.text(selected).unwrap();
             // Perform uninstall action
 			if !addon_name.is_empty() {
-				match crate::uninstall_addon(&addon_name, false) {
+				match crate::uninstall_addon::uninstall_addon(&addon_name, false) {
 					Ok(_) => {
            				dialog::alert(center().0 - 200, center().1 - 100, &format!("Addon \"{}\" uninstalled successfully!", addon_name));
 						installed_list.remove(selected);
@@ -265,7 +265,7 @@ pub fn main() {
     flex3.set_margin(10);
 
 	let mut btn_pug = RButton::new(0,0,82,32,"PuG mode: Unknown");
-	match crate::PuG_mode_check(false) {
+	match crate::pug_mode::PuG_mode_check(false) {
 		Err(_e) => {
 		btn_pug.set_label("PuG mode is unavailable");
 		btn_pug.deactivate();
@@ -283,7 +283,7 @@ pub fn main() {
 	let installed_list_clone = Arc::clone(&installed_list);
 	let mut btn_pug_clone = btn_pug.clone();
 	btn_pug.set_callback(move |_| {
-		match crate::PuG_mode_switch(false) {
+		match crate::pug_mode::PuG_mode_switch(false) {
 			Ok(1) => {
 				   dialog::alert(center().0 - 200, center().1 - 100, &format!("PuG Mode is now enabled."));
 				   btn_pug_clone.set_label("PuG mode: Enabled");
@@ -396,7 +396,7 @@ fn refresh_installed_list(installed_list_clone: &Arc<Mutex<Browser>>) {
     // Call list_addons and populate the browser
     // Capture the output from list_addons
     let mut output = Vec::new();
-    if let Err(e) = crate::list_addons(true, false, &mut output) {
+    if let Err(e) = crate::list_addons::list_addons(true, false, &mut output) {
         installed_list.set_type(BrowserType::Normal);
         installed_list.add(&format!("@bFailed to list addons:"));
         installed_list.add(&format!("{}", e));

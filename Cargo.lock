@@ -8,7 +8,6 @@ version = "0.4.90"
 dependencies = [
  "clap",
  "colored",
- "filebuffer 1.0.0",
  "fltk",
  "fltk-theme",
  "helptext",
@@ -191,16 +190,6 @@ name = "filebuffer"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b41bfe1d74263ea9d084be951077614b3b98b4e59a9dafab1467645a9e52305"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "filebuffer"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c997bb4895e53c23e7ebdf8a315f0863206b19e51da2901cc24631eb0f26e209"
 dependencies = [
  "libc",
  "winapi",
@@ -469,7 +458,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb5aab428f83b928522b427b2f65c641a125d2e66ae266428ccbca540b4ef4f7"
 dependencies = [
  "crc",
- "filebuffer 0.4.0",
+ "filebuffer",
 ]
 
 [[package]]

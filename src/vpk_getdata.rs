@@ -14,7 +14,7 @@ use regex::Regex;
 pub fn main(
     addon_file: &str,
     verbose: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(String, String, String), Box<dyn std::error::Error>> {
     let path = Path::new(addon_file);
     let mut file = File::open(path)?;
     let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
@@ -81,11 +81,13 @@ pub fn main(
     }
 
     // Print the extracted information
-    println!("Addon Title: {}", title.unwrap_or_else(|| "N/A".to_string()));
-    println!("Addon Version: {}", version.unwrap_or_else(|| "N/A".to_string()));
-    println!("Addon Description: {}", description.unwrap_or_else(|| "N/A".to_string()));
+    if var_os("DEBUG").is_some() || verbose {
+    println!("Addon Title: {}", title.clone().unwrap_or_else(|| "N/A".to_string()));
+    println!("Addon Version: {}", version.clone().unwrap_or_else(|| "N/A".to_string()));
+    println!("Addon Description: {}", description.clone().unwrap_or_else(|| "N/A".to_string()));
+    }
 
-    Ok(())
+    Ok((title.unwrap(), version.unwrap(), description.unwrap()))
 }
 
 // Helper function to extract the string value from a KeyValue formatted line.
