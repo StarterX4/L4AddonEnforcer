@@ -96,7 +96,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --profile release --bin L4AddonEnforcer_Linux.x86_64 --locked --target=${{ matrix.TARGET }}
+          args: --profile release --bin L4AddonEnforcer --locked --target=${{ matrix.TARGET }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
@@ -134,7 +134,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --profile release --bin L4AddonEnforcer_Win64.exe --locked --target=${{ matrix.TARGET }}
+          args: --profile release --bin L4AddonEnforcer --locked --target=${{ matrix.TARGET }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
