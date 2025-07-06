@@ -75,9 +75,9 @@ jobs:
           # - os: ubuntu-latest
           #   target: aarch64-unknown-linux-musl
     env:
-      BINARY_EXTENSION: ${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
+      BINARY_EXTENSION: _Linux.x86_64
       PATH_BINARY: ${{ github.workspace }}/target/${{ matrix.TARGET }}/release/L4AddonEnforcer${{ matrix.EXTENSION }}${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
-      OPENSSL_STATIC: 1
+      # OPENSSL_STATIC: 1
       CC: clang
       CXX: clang++
     steps:
@@ -92,6 +92,8 @@ jobs:
           target: ${{ matrix.target }}
       # - if: ${{ matrix.os == 'ubuntu-latest' }}
       #   run: sudo apt update -y && sudo apt install libfltk1.4-dev -y
+      - name: clang
+        run: export CC=clang CXX=clang++
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
@@ -99,13 +101,13 @@ jobs:
           args: --profile release --bin L4AddonEnforcer --locked --target=${{ matrix.TARGET }}
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
+          name: L4AddonEnforcer${{ env.BINARY_EXTENSION }}
           path: ${{ env.PATH_BINARY }}
       - name: Evaluate shasum
         run: echo -n $(shasum -ba 256 ${{ env.PATH_BINARY }} | cut -d " " -f 1) > ${{ env.PATH_BINARY }}.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-L4AddonEnforcer.sha256
+          name: L4AddonEnforcer{{ env.BINARY_EXTENSION }}.sha256
           path: ${{ env.PATH_BINARY }}.sha256
 
   build-release-windows:
@@ -137,13 +139,13 @@ jobs:
           args: --profile release --bin L4AddonEnforcer --locked --target=${{ matrix.TARGET }}
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
+          name: L4AddonEnforcer_Win64${{ env.BINARY_EXTENSION }}
           path: ${{ env.PATH_BINARY }}
       - name: Evaluate shasum
         run: echo -n $(shasum -ba 256 ${{ env.PATH_BINARY }} | cut -d " " -f 1) > ${{ env.PATH_BINARY }}.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-L4AddonEnforcer.sha256
+          name: L4AddonEnforcer_Win64.sha256
           path: ${{ env.PATH_BINARY }}.sha256
 
       # - name: '[Optional] Publish Artifact'
