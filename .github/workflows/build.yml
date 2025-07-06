@@ -65,7 +65,7 @@ jobs:
       - name: "Ensure Cargo.lock is not modified"
         run: git diff --exit-code Cargo.lock
 
-  build-release:
+  build-release-linux:
     name: Build release Executable (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -75,6 +75,46 @@ jobs:
             target: x86_64-unknown-linux-gnu
           # - os: ubuntu-latest
           #   target: aarch64-unknown-linux-musl
+    env:
+      BINARY_EXTENSION: ${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
+      PATH_BINARY: ${{ github.workspace }}/target/${{ matrix.TARGET }}/release/L4AddonEnforcer${{ matrix.EXTENSION }}${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
+      OPENSSL_STATIC: 1
+      CC="clang" 
+      CXX="clang++"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@master
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          override: true
+          components: clippy
+          target: ${{ matrix.target }}
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt update -y && sudo apt install libfltk1.4-dev -y
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --profile release --bin L4AddonEnforcer_Linux.x86_64 --locked --target=${{ matrix.TARGET }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
+          path: ${{ env.PATH_BINARY }}
+      - name: Evaluate shasum
+        run: echo -n $(shasum -ba 256 ${{ env.PATH_BINARY }} | cut -d " " -f 1) > ${{ env.PATH_BINARY }}.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-L4AddonEnforcer.sha256
+          path: ${{ env.PATH_BINARY }}.sha256
+
+  build-release-windows:
+    name: Build release Executable (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
     env:
@@ -91,13 +131,11 @@ jobs:
           override: true
           components: clippy
           target: ${{ matrix.target }}
-      #- if: ${{ matrix.os == 'ubuntu-latest' }}
-        #run: sudo apt update -y && sudo apt install libssl-dev -y
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
           command: build
-          args: --release --no-default-features --bin L4AddonEnforcer --locked --target=${{ matrix.TARGET }}
+          args: --profile release --bin L4AddonEnforcer_Win64.exe --locked --target=${{ matrix.TARGET }}
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-L4AddonEnforcer${{ env.BINARY_EXTENSION }}
