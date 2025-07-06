@@ -78,8 +78,8 @@ jobs:
       BINARY_EXTENSION: ${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
       PATH_BINARY: ${{ github.workspace }}/target/${{ matrix.TARGET }}/release/L4AddonEnforcer${{ matrix.EXTENSION }}${{ endsWith(matrix.target, '-msvc') && '.exe' || '' }}
       OPENSSL_STATIC: 1
-      CC="clang" 
-      CXX="clang++"
+      CC: clang
+      CXX: clang++
     steps:
       - uses: actions/checkout@v4
       - uses: seanmiddleditch/gha-setup-ninja@master
