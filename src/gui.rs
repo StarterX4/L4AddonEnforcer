@@ -115,7 +115,7 @@ pub fn main() {
 	// Call list_addons and populate the browser
 	// Capture the output from list_addons
 	let mut output = Vec::new();
-	if let Err(e) = crate::list_addons::list_addons(true, false, &mut output) {
+	if let Err(e) = crate::list_addons::list_addons(true, false, false, &mut output) {
 		installed_list.set_type(BrowserType::Normal);
 		installed_list.add(&format!("Failed to list addons:"));
 		installed_list.add(&format!("{}", e));
@@ -396,7 +396,7 @@ fn refresh_installed_list(installed_list_clone: &Arc<Mutex<Browser>>) {
     // Call list_addons and populate the browser
     // Capture the output from list_addons
     let mut output = Vec::new();
-    if let Err(e) = crate::list_addons::list_addons(true, false, &mut output) {
+    if let Err(e) = crate::list_addons::list_addons(true, false, false, &mut output) {
         installed_list.set_type(BrowserType::Normal);
         installed_list.add(&format!("@bFailed to list addons:"));
         installed_list.add(&format!("{}", e));

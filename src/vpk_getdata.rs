@@ -10,11 +10,17 @@ use std::env::var_os;
 use std::{fs::File, io::{Seek, SeekFrom}, path::Path, error::Error};
 use regex::Regex;
 
+pub struct ExtractedData {
+    pub title: String,
+    pub version: String,
+    pub description: String,
+}
+
 //read_single_file_vpk_v1
 pub fn main(
-    addon_file: &str,
+    addon_file: &String,
     verbose: bool,
-) -> Result<(String, String, String), Box<dyn std::error::Error>> {
+) -> Result<ExtractedData, Box<dyn std::error::Error>> {
     let path = Path::new(addon_file);
     let mut file = File::open(path)?;
     let vpk = VPKVersion1::try_from(&mut file).expect("Failed to read VPK file");
@@ -81,13 +87,17 @@ pub fn main(
     }
 
     // Print the extracted information
-    if var_os("DEBUG").is_some() || verbose {
-    println!("Addon Title: {}", title.clone().unwrap_or_else(|| "N/A".to_string()));
-    println!("Addon Version: {}", version.clone().unwrap_or_else(|| "N/A".to_string()));
-    println!("Addon Description: {}", description.clone().unwrap_or_else(|| "N/A".to_string()));
-    }
+    // if var_os("DEBUG").is_some() || verbose {
+    // println!("Addon Title: {}", title.clone().unwrap_or_else(|| "N/A".to_string()));
+    // println!("Addon Version: {}", version.clone().unwrap_or_else(|| "N/A".to_string()));
+    // println!("Addon Description: {}", description.clone().unwrap_or_else(|| "N/A".to_string()));
+    // }
 
-    Ok((title.unwrap(), version.unwrap(), description.unwrap()))
+    Ok(ExtractedData{
+        title: title.unwrap_or_else(|| "N/A".to_string()).to_string(),
+        version: version.unwrap_or_else(|| "N/A".to_string()).to_string(),
+        description: description.unwrap_or_else(|| "N/A".to_string()).to_string(),
+    })
 }
 
 // Helper function to extract the string value from a KeyValue formatted line.

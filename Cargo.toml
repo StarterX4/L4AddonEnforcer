@@ -1,6 +1,6 @@
 [package]
 name = "L4AddonEnforcer"
-version = "0.4.90"
+version = "0.4.99"
 edition = "2024"
 license = "LGPL-3.0-only"
 authors = ["Dominik Adrian Grzywak"]
@@ -22,6 +22,7 @@ fltk = { version = "1.5", default-features = false, features = ["use-ninja","use
 fltk-theme = "0.7"
 sourcepak = { version = "0.3.0", features = ["mem-map"] }
 regex = "1.11.1"
+sanitize-filename = "0.6.0"
 
 # The default release profile. It contains all optimizations, without
 # sacrificing debug info. With this profile (like in the standard

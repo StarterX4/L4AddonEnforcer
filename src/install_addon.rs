@@ -1,6 +1,27 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 use crate::*;
 
+pub fn autoinstall_addon(
+    addon_file: &String,
+    verbose: bool,
+) -> Result<i32, Box<dyn std::error::Error>> {
+    let datapack = vpk_getdata::main(&addon_file, verbose)?;
+    if datapack.title.is_empty() {
+        let err = format!(
+            "Unable to define the addon name. Please specify it manually."
+        );
+        eprintln!("{} {}", "Error:".red(), err);
+        println!(
+            "Type {} / {} for more information",
+            "-h".blue(),
+            "--help".blue()
+        );
+        return Err(Box::new(QuietErr(Some(err))));
+    }
+        let i = install_addon(&addon_file, &sanitize_filename::sanitize(&datapack.title.replace(" ", "_").replace("'", "").as_str()), verbose)?;
+        Ok(i)
+}
+
 pub fn install_addon(
     addon_file: &str,
     name: &str,

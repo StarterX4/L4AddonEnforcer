@@ -3,7 +3,8 @@
 #![allow(non_snake_case)]
 #![windows_subsystem = "windows"]
 mod core_imports;
-use crate::core_imports::*;
+use crate::{core_args::SubCommands, core_imports::*};
+mod core_args;
 
 mod gui;
 mod gui_theming;
@@ -15,107 +16,168 @@ mod pug_mode;
 // mod gameinfo_reset;
 mod vpk_getdata;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(short, long, value_name = "FILE_PATH")]
-    auto: Option<String>,
-    #[arg(short, long, value_name = "FILE_PATH")]
-    file: Option<String>,
-    #[arg(short, long, value_name = "NAME")]
-    name: Option<String>,
-    #[arg(short, long, value_name = "NAME")]
-    uninstall: Option<String>,
-    #[arg(short, long)]
-    list: bool,
-    #[arg(short, long)] // TODO
-    quiet: bool,
-    #[arg(short = 'p', long = "pug")]
-    pug_switch: bool,
-    #[arg(short = 'P', long = "checkpug")]
-    pug_check: bool,
-    #[arg(short, long)]
-    rename: Option<String>,
-    #[arg(long)]
-    reset: bool,
-    #[arg(short, long)]
-    verbose: bool,
-    #[arg(short)]
-    help: bool,
-    #[arg(long = "help")]
-    help_long: bool,
-}
+
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-
-    if (args.file.is_none() && args.rename.is_none()) && args.name.is_some() {
-        let err = format!(
-            "Argument -n <name> has been passed but no -f <file> or -r <old_name> have been passed!
-                                \nNo addon.vpk file provided for installation
-                                \nNor a currently installed addon for renaming."
-        );
-        eprintln!("{} {}", "Error:".red(), err);
-        println!(
-            "Type {} / {} for more information",
-            "-h".blue(),
-            "--help".blue()
-        );
-        return Err(Box::new(QuietErr(Some(err))));
+    let args = core_args::Args::parse();
+    match &args.command {
+        Some(SubCommands::Install(install_args)) | Some(SubCommands::I(install_args)) => {
+            // Install or update logic
+            match (&install_args.file, &install_args.name) {
+                (Some(addon_file), None) => {
+                    let _ = install_addon::autoinstall_addon(&addon_file, args.verbose);
+                },
+                (Some(addon_file), Some(name)) => {
+                    let _ = install_addon::install_addon(&addon_file, &name, args.verbose);
+                },
+                (None, Some(..)) => {
+                    let err = format!(
+                        "Argument -n <name> has been passed but no -f <file> have been passed!
+                                            \nNo addon.vpk file provided for installation."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+                (None, None) => {
+                    let err = format!(
+                        "Arguments -n <name> and -f <file> have not been passed!
+                                            \nNo addon.vpk file provided for installation."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+            }
+        }
+        Some(SubCommands::Uninstall(uninstall_args)) | Some(SubCommands::U(uninstall_args)) => {
+            // Uninstall logic
+            match &uninstall_args.name {
+                Some(name) => {
+                    let _ = uninstall_addon::uninstall_addon(&name, args.verbose);
+                },
+                None => {
+                    let err = format!(
+                        "Argument -n <name> has not been passed!
+                                            \nNo addon name provided for uninstalling."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+            }
+        }
+        Some(SubCommands::List(list_args)) | Some(SubCommands::L(list_args)) => {
+            // List addons
+            let _ = list_addons::list_addons(list_args.quiet, args.verbose, list_args.details, &mut std::io::stdout()); // Unused result becase of QuietErr usage?
+        }
+        Some(SubCommands::Rename(rename_args)) | Some(SubCommands::R(rename_args)) => {
+            // Rename logic
+            match (&rename_args.current, &rename_args.new) {
+                (Some(current), Some(new)) => {
+                    let _ = rename_addon::rename_addon(&current, &new, args.verbose);
+                },
+                (Some(..), None) => {
+                    let err = format!(
+                        "Argument --current (-c) <current_name> has been passed but no --new (-n) <new_name> have been passed!
+                                            \nNo new addon name provided for renaming."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+                (None, Some(..)) => {
+                    let err = format!(
+                        "Argument --current (-c) <current_name> has not been passed!
+                                            \nNo currently installed addon provided for renaming."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+                (None, None) => {
+                    let err = format!(
+                        "Arguments --current (-c) <current_name> and --new (-n) <new_name> have not been passed!
+                                            \nNo currently installed addon provided for renaming."
+                    );
+                    eprintln!("{} {}", "Error:".red(), err);
+                    println!(
+                        "Type {} / {} for more information",
+                        "-h".blue(),
+                        "--help".blue()
+                    );
+                    return Err(Box::new(QuietErr(Some(err))));
+                },
+            }
+        }
+        Some(SubCommands::Reset(reset_args)) | Some(SubCommands::Rs(reset_args)) => {
+            // Reset logic
+            if reset_args.confirm {
+                let _ = gameinfo_reset(args.verbose); // Unused result becase of QuietErr usage?
+            }
+            else {
+                let err = format!(
+                    "Argument --CONFIRM has not been passed!
+                                        \nNo confirmation provided for reset."
+                );
+                eprintln!("{} {}", "Error:".red(), err);
+                return Err(Box::new(QuietErr(Some(err))));
+            }
+            
+        },
+        Some(SubCommands::PuG(pug_args)) | Some(SubCommands::P(pug_args)) => {
+            if pug_args.check {
+                let _ = pug_mode::PuG_mode_check(args.verbose);
+            } else if pug_args.switch {
+                let _ = pug_mode::PuG_mode_switch(args.verbose);
+            } else {
+                let err = format!(
+                    "No PuG mode action specified!
+                                        \nUse --check (-c) to check PuG mode status or --switch (-s) to toggle it."
+                );
+                eprintln!("{} {}", "Error:".red(), err);
+                println!(
+                    "Type {} / {} for more information",
+                    "-h".blue(),
+                    "--help".blue()
+                );
+                return Err(Box::new(QuietErr(Some(err))));
+            }
+        }
+        None => {
+            if args.help {
+                // Help logic
+                print_short_help(true);
+            } else if args.help_long {
+                // Long help logic
+                print_long_help(true);
+            } else {
+                gui::main();
+            }
+        },
     }
 
-    if let Some(addon_file) = args.file {
-        // Install or update logic
-        if let Some(name) = args.name {
-            let _ = install_addon::install_addon(&addon_file, &name, args.verbose); // Unused result becase of QuietErr usage?
-        } else {
-            eprintln!("{} No addon name provided for installation", "Error:".red());
-            println!(
-                "Type {} / {} for more information",
-                "-h".blue(),
-                "--help".blue()
-            );
-            exit(22)
-        }
-    } else if let Some(name) = args.uninstall {
-        // Uninstall logic
-        let _ = uninstall_addon::uninstall_addon(&name, args.verbose); // Unused result becase of QuietErr usage?
-    } else if args.list {
-        // List addons
-        let _ = list_addons::list_addons(args.quiet, args.verbose, &mut std::io::stdout()); // Unused result becase of QuietErr usage?
-    } else if args.pug_switch {
-        // PuG mode switch logic
-        let _ = pug_mode::PuG_mode_switch(args.verbose);
-    } else if args.pug_check {
-        // PuG mode check logic
-        let _ = pug_mode::PuG_mode_check(args.verbose);
-    } else if let Some(ren) = args.rename {
-        // Rename logic
-        if let Some(name) = args.name {
-            let _ = rename_addon::rename_addon(&ren, &name, args.verbose); // Unused result becase of QuietErr usage?
-        } else {
-            eprintln!("{} No new addon name provided for renaming", "Error:".red());
-            println!(
-                "Type {} / {} for more information",
-                "-h".blue(),
-                "--help".blue()
-            );
-            exit(22)
-        }
-    } else if args.reset {
-        // Gameinfo.txt reset logic
-        let _ = gameinfo_reset(args.verbose); // Unused result becase of QuietErr usage?
-    } else if args.help {
-        // Help logic
-        print_short_help(true);
-    } else if args.help_long {
-        // Long help logic
-        print_long_help(true);
-    } else if let Some(addonpath) = args.auto {
-        let _ = vpk_getdata::main(&addonpath, args.verbose);
-    } else {
-        gui::main();
-    }
 
     Ok(())
 }
@@ -187,7 +249,7 @@ impl fmt::Display for QuietErr {
         }
     }
 }
-impl std::error::Error for QuietErr {}
+impl Error for QuietErr {}
 
 fn calculate_md5(filepath: &Path) -> Result<String, std::io::Error> {
     let mut file = BufReader::new(File::open(filepath)?); // Buffered for performance
@@ -224,10 +286,11 @@ fn calculate_md5(filepath: &Path) -> Result<String, std::io::Error> {
 //     assert_eq!("../bar", clean_path("../bar"));
 // }
 
-fn l4d2_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn l4d2_path() -> Result<PathBuf, Box<dyn Error>> {
     let err = "Failed to find L4D2 install location".to_string();
     let err1 = "Failed to find Steam installation location".to_string();
     let err2 = "Failed to locate Left 4 Dead 2 directory".to_string();
+    
     if let Some(path) = var_os("L4D2_DIR") {
         let path: PathBuf = path.into();
         if path.is_dir() {
@@ -240,20 +303,19 @@ fn l4d2_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     } else {
         let (app, library) = SteamDir::locate()
             .map_err(|_| {
-                let e = format!("{}: {}", err.clone(), err1);
+                let e = format!("{}: {}", err, err1);
                 eprintln!("{} {}", "Error:".red(), e);
-                QuietErr(Some(e))
+                Box::new(QuietErr(Some(e))) as Box<dyn Error>
             })?
             .find_app(550)
             .map_err(|_| {
-                let e = format!("{}: {}", err.clone(), err2);
+                let e = format!("{}: {}", err, err2);
                 eprintln!("{} {}", "Error:".red(), e);
-                QuietErr(Some(e))
+                Box::new(QuietErr(Some(e))) as Box<dyn Error>
             })?
-            .ok_or({
-                let e = err.clone();
-                eprintln!("{} {}", "Error:".red(), e);
-                QuietErr(Some(e))
+            .ok_or_else(|| {
+                eprintln!("{} {}", "Error:".red(), err);
+                Box::new(QuietErr(Some(err))) as Box<dyn Error>
             })?;
         Ok(library.resolve_app_dir(&app))
     }
@@ -264,7 +326,7 @@ fn gameinfo_path(verbose: bool) -> Result<PathBuf, Box<dyn std::error::Error>> {
     if var_os("DEBUG").is_some() || verbose {
         println!("{} Locating L4D2 directory...", "[D]".blue());
     }
-    let l4d2_dir = l4d2_path().expect("Failed to locate Left 4 Dead 2 directory");
+    let l4d2_dir = l4d2_path()?;
     let gameinfo_path = l4d2_dir.join("left4dead2/gameinfo.txt");
 
     if !gameinfo_path.exists() {
@@ -353,42 +415,15 @@ fn gameinfo_backup_path(verbose: bool) -> Result<PathBuf, Box<dyn std::error::Er
 
 const HELP: Help = Help(sections!(
     [{env!("CARGO_PKG_NAME")} " " {env!("CARGO_PKG_VERSION")}]
+    ["A gameinfo.txt-based addon manager for Left 4 Dead 2."]
     ["Use " c:"-h" " for short descriptions and " c:"--help" " for more details."]
+     [c:"--help" " for more details."]
     []
     "USAGE" {
-        [{env!("CARGO_PKG_NAME")} " [OPTIONS] [<ARGS>]"]
+        [{env!("CARGO_PKG_NAME")} " [OPTIONS] [<SUBCOMMAND>] [<ARGS>]"]
     }
     "OPTIONS" {
         table Auto {
-            "-f, --file <FILE>" => {
-                ["VPK Addon file path"]
-            }
-            "-l, --list" => {
-                ["List currently installed addons"]
-            }
-            "-n, --name <NAME>" => {
-                ["Name for the addon that will be installed/updated or renamed (if already installed)"]
-                Long ["a directory that will be named after," "and an entry in the gameinfo.txt.\n"
-                "You can name it whatever you like, to later know what that addon is."]
-            }
-            "-u, --uninstall <NAME>" => {
-                ["Uninstall the already installed addon"]
-            }
-            "-r, --rename <CURRENT_NAME>" => {
-                ["Rename the already installed addon"]
-            }
-            "-p, --pug" => {
-                ["Switches the PuG Mode (on/off)."]
-                Long ["Temporarily backup the current gameinfo.txt and restore the vanilla one.\n"
-                "Or vice versa.\n"
-                "Useful for competitive PuG-type servers that enforce file consistency."]
-            }
-            "-P, --checkpug" => {
-                ["Checks the PuG Mode status."]
-            }
-            "--reset" => {
-                ["Reset the current gameinfo.txt to its default state using the existing backup"]
-            }
             "-h, --help" => {
                 ["Print help information"]
                 Long ["Use " c:"-h" " for short descriptions and " c:"--help" " for more details."]
@@ -400,33 +435,93 @@ const HELP: Help = Help(sections!(
             "-V, --version" => {
                 ["Print version information"]
             }
-//             "-W, --warnings <DIAGNOSTICS>" => {
-//                 Short ["Disable certain warnings (disable all with " c:"-W0" ")"]
-//                 Long ["Disable some or all warnings. A single warning can be disabled by specifying
-// the name followed by " c:"=0" ", for example:
-
-//     " c!"-Wcompat=0" "
-
-// Multiple warnings can be disabled by setting this option multiple times, or
-// using a comma-separated list:
-
-//     " c!"-Wcompat=0 -Wdeprecated=0
-//     -Wcompat=0,deprecated=0" "
-
-// To disable all warnings, use " c:"-W0" ".
-
-// Currently, the following warnings can be disabled:"]
-//                 Long table Compact {
-//                     "compat"     => { ["Compatibility warnings"] }
-//                     "deprecated" => { ["A used feature will be removed in the future"] }
-//                 }
-//             }
         }
     }
+    "SUBCOMMANDS" {
+        table Auto {
+            "install, i" => {
+                ["Install an addon"]
+                Long ["Installs or updates an addon. Requires either the path to the VPK file or \n"
+                      "both the path and desired addon name."]
+            }
+            "list, l" => {
+                ["List installed addons"]
+                Long ["Lists all currently installed addons."]
+            }
+            "uninstall, u" => {
+                ["Uninstall an addon"]
+                Long ["Uninstalls a specified addon by name."]
+            }
+            "rename, r" => {
+                ["Rename an addon"]
+                Long ["Renames an installed addon. Requires both the current and the new name."]
+            }
+            "pug, p" => {
+                ["Manage PuG mode"]
+                Long ["Enables, disables, or checks the status of PuG mode."]
+            }
+            "reset, rs" => {
+                ["Reset gameinfo.txt"]
+                Long ["Resets the gameinfo.txt file to its original state using a backup."]
+            }
+        }
+    }
+    "INSTALL SUBCOMMAND ARGS" {
+        table Auto {
+            "-f, --file <FILE_PATH>" => {
+                ["Path to the VPK addon file"]
+            }
+            "-n, --name <NAME>" => {
+                ["Specify the addon name manually"]
+                Long ["If not provided, the addon name will be extracted from the VPK."]
+            }
+        }
+    }
+    "LIST SUBCOMMAND ARGS" {
+        table Auto {
+            "-d, --details" => {
+                ["List details for each addon (title, version, description"]
+            }
+        }
+    }
+    "UNINSTALL SUBCOMMAND ARGS" {
+        table Auto {
+            "-n, --name <NAME>" => {
+                ["Name of the addon to uninstall (optional)"]
+            }
+        }
+    }
+    "RENAME SUBCOMMAND ARGS" {
+        table Auto {
+            "-c, --current <CURRENT_NAME>" => {
+                ["Current name of the addon"]
+            }
+            "-n, --new <NEW_NAME>" => {
+                ["New name for the addon"]
+            }
+        }
+    }
+    "PUG SUBCOMMAND ARGS" {
+        table Auto {
+            "-c, --check" => {
+                ["Check PuG mode status"]
+            }
+            "-s, --switch" => {
+                ["Toggle PuG mode (enable/disable)"]
+            }
+        }
+    }
+    "RESET SUBCOMMAND ARGS" {
+        table Auto {
+            "--CONFIRM" => { ["Confirm the reset operation"] }
+        }
+    }
+    []
     "EXAMPLE" {
-        ["\t" g:{env!("CARGO_PKG_NAME")} " " C:"-f" " " c:"/home/user/Downloads/ion_vocalizer.vpk" " " C:"-n" " " c:"vocalizer"]
-        [g:{env!("CARGO_PKG_NAME")} " " C:"-u" " " c:"vocalizer"]
-        [g:{env!("CARGO_PKG_NAME")} " " C:"-r" " " c:"vocalizer" " " C:"-n" " " c:"ion_vocalizer"]
+        ["\t" g:{env!("CARGO_PKG_NAME")} " " c:"i" " " c:"/home/user/Downloads/ion_vocalizer.vpk"]
+        [g:{env!("CARGO_PKG_NAME")} " " c:"i" " " C:"-f" " " c:"/home/user/Downloads/ion_vocalizer.vpk" " " C:"-n" " " c:"vocalizer"]
+        [g:{env!("CARGO_PKG_NAME")} " " c:"u" " " C:"-n" " " c:"vocalizer"]
+        [g:{env!("CARGO_PKG_NAME")} " " c:"r" " " C:"-c" " " c:"vocalizer" " " C:"-n" " " c:"ion_vocalizer"]
     }
     "ENVIRONMENT VARIABLES" {
         [c:"\tL4D2_DIR\n\t"
