@@ -96,7 +96,7 @@ jobs:
           components: clippy
           target: ${{ matrix.target }}
       - if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt update -y && sudo apt install -y libcairo-dev libpango1.0-dev libwayland-dev libx11-dev && sudo apt install -y https://launchpad.net/ubuntu/+archive/primary/+files/libfltk1.4-dev_1.4.3-1ubuntu2_amd64.deb
+        run: sudo apt update -y && sudo apt install -y libcairo-dev libpango1.0-dev libwayland-dev libx11-dev && sudo apt install -y "https://launchpad.net/ubuntu/+archive/primary/+files/libfltk1.4-dev_1.4.3-1ubuntu2_amd64.deb"
         # ibfltk1.4-dev -y
       - uses: actions-rs/cargo@v1
         with:
