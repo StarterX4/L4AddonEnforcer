@@ -6,9 +6,11 @@ An addon installer for Left 4 Dead 2 that will let you use them on official serv
 ![](screenshots/gui1_linux.png) ![installation](screenshots/gui2_linux.png)
 ![renaming](screenshots/gui3_linux.png)
 
-Since v0.5.0 there's a different scheme of CLI commands. The commands are now divided between subcommands that perform it's own function. E.g. Installation, Listing, PuG mode, etc.
+Since v0.3.0 there's a PuG mode switch (on/off) to temporarily restore the vanilla backup, to let you play on servers that impose file consistency. As well as a button to completely and irreversibly reset the current gameinfo to the default.
 
 ![](screenshots/gui_since-0.3.0_linux.png)
+
+Since v0.5.0 there's a different scheme of CLI commands. The commands are now divided between subcommands that perform it's own function. E.g. Installation, Listing, PuG mode, etc.
 
 ### CLI Usage
 
